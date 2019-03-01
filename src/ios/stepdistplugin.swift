@@ -5,22 +5,37 @@ import CoreLocation
     var locationManager: CLLocationManager!
     var pluginInfoEventCallbackId: String!
     var distanceEventCallbackId: String!
+    var distanceFilter: Int!
+    var accuracyFilter: Int!
     
     @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
         pluginInfoEventCallbackId = command.callbackId
-
+        
+        guard let arguments = command.arguments.first as? [String: Any] else {
+            return
+        }
+        
+        if let distanceFilter = arguments["distanceFilter"] as? Int, let accuracyFilter = arguments["accuracyFilter"] as? Int {
+            self.distanceFilter = distanceFilter
+            self.accuracyFilter = accuracyFilter
+        } else {
+            return
+        }
+    
         if locationManager == nil {
             locationManager = CLLocationManager()
         }
         
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = Double(distanceFilter)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
         let pluginResult = CDVPluginResult(
-            status: CDVCommandStatus_OK
+            status: CDVCommandStatus_OK,
+            messageAs: createPluginInfo(9999.0)
         )
         pluginResult?.setKeepCallbackAs(true)
         
@@ -77,15 +92,7 @@ import CoreLocation
         print("Location accuracy: \(locations.last?.horizontalAccuracy ?? 9999.0)")
 
         if pluginInfoEventCallbackId != nil {
-            var isReadyToStart = false;
-            
-            if (locations.last!.horizontalAccuracy <= 8.1) {
-                isReadyToStart = true;
-            }
-            
-            let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart,
-                                    "lastCalibrated": "Placeholder",
-                                    "stepLength": "Placeholder"]
+            let pluginInfo = createPluginInfo(locations.last!.horizontalAccuracy)
             
             let pluginResult = CDVPluginResult(
                 status: CDVCommandStatus_OK,
@@ -111,6 +118,17 @@ import CoreLocation
                 callbackId: distanceEventCallbackId
             )
         }
+    }
+    
+    func createPluginInfo(_ accuracy: Double) -> [String : Any] {
+        var isReadyToStart = false;
+        
+        if (accuracy <= Double(accuracyFilter) + 0.01) {
+            isReadyToStart = true;
+        }
+        
+        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "lastCalibrated": "Placeholder", "stepLength": "Placeholder"]
+        return pluginInfo
     }
     
 }

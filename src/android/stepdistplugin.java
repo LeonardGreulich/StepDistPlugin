@@ -1,4 +1,4 @@
-package cordova-plugin-stepdist;
+package cordova.plugin.stepdist;
 
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
