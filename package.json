@@ -1,0 +1,23 @@
+{
+  "name": "cordova-plugin-stepdist",
+  "version": "0.0.1",
+  "description": "A plugin to estimate the travaled distance using a hybrid GPS and step counting approach.",
+  "cordova": {
+    "id": "cordova-plugin-stepdist",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "none"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-ios",
+    "cordova-android"
+  ],
+  "author": "Leonard Greulich",
+  "license": "ISC"
+}
