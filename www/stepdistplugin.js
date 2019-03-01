@@ -13,13 +13,13 @@ var Stepdistplugin = function() {
     document.addEventListener("pause", onPause, false);
     document.addEventListener("resume", onResume, false);
 
-    exec(success, error, "stepdistplugin", "startLocalization", [])
+    startLocalization();
 }
 
 var onTraveledDistanceHasSubscibersChange = function() {
     if (stepdistplugin.channels.distancetraveled.numHandlers === 1) {
         console.log("At least one traveled distance listener registered");
-        exec(traveledDistanceEvent, error, "stepdistplugin", "startMeasuringDistance", [])
+        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", [])
     } else if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
         console.log("No traveled distance listener registered");
         exec(success, error, "stepdistplugin", "stopMeasuringDistance", [])
@@ -29,17 +29,25 @@ var onTraveledDistanceHasSubscibersChange = function() {
 var onPause = function() {
     console.log("On pause");
     if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
-        console.log("Stop localization");
-        exec(success, error, "stepdistplugin", "stopLocalization", []);
+        stopLocalization();
     }
 }
 
 var onResume = function() {
     console.log("On resume");
     if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
-        console.log("Start localization");
-        exec(success, error, "stepdistplugin", "startLocalization", [])
+        startLocalization();
     }
+}
+
+var startLocalization = function() {
+    console.log("Start localization");
+    exec(pluginInfoEvent, error, "stepdistplugin", "startLocalization", [])
+}
+
+var stopLocalization = function() {
+    console.log("Stop localization");
+    exec(success, error, "stepdistplugin", "stopLocalization", []);
 }
 
 var success = function() {
@@ -50,8 +58,12 @@ var error = function() {
     console.log("Error!");
 }
 
-var traveledDistanceEvent = function(distanceEvent) {
-    cordova.fireDocumentEvent("distancetraveled", [distanceEvent]);
+var pluginInfoEvent = function(pluginInfoEvent) {
+    console.log(pluginInfoEvent);
+}
+
+var onDistanceTraveled = function(distanceTraveledEvent) {
+    cordova.fireDocumentEvent("distancetraveled", [distanceTraveledEvent]);
 }
 
 var stepdistplugin = new Stepdistplugin();

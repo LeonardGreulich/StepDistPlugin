@@ -2,10 +2,13 @@ import CoreLocation
 
 @objc(stepdistplugin) class stepdistplugin : CDVPlugin, CLLocationManagerDelegate {
     
-    var locationManager: CLLocationManager!    
-    var distanceCallbackId: String!
+    var locationManager: CLLocationManager!
+    var pluginInfoEventCallbackId: String!
+    var distanceEventCallbackId: String!
     
-    @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {      
+    @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
+        pluginInfoEventCallbackId = command.callbackId
+
         if locationManager == nil {
             locationManager = CLLocationManager()
         }
@@ -19,6 +22,7 @@ import CoreLocation
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK
         )
+        pluginResult?.setKeepCallbackAs(true)
         
         self.commandDelegate!.send(
             pluginResult,
@@ -41,7 +45,7 @@ import CoreLocation
     }
     
     @objc(startMeasuringDistance:) func startMeasuringDistance(command: CDVInvokedUrlCommand) {     
-        distanceCallbackId = command.callbackId
+        distanceEventCallbackId = command.callbackId
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -51,12 +55,12 @@ import CoreLocation
         
         self.commandDelegate!.send(
             pluginResult,
-            callbackId: distanceCallbackId
+            callbackId: distanceEventCallbackId
         )
     }
 
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {     
-        distanceCallbackId = nil
+        distanceEventCallbackId = nil
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -71,18 +75,40 @@ import CoreLocation
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         print("Location accuracy: \(locations.last?.horizontalAccuracy ?? 9999.0)")
-        let accuracy = locations.last!.horizontalAccuracy
-        
-        if distanceCallbackId != nil {
+
+        if pluginInfoEventCallbackId != nil {
+            var isReadyToStart = false;
+            
+            if (locations.last!.horizontalAccuracy <= 8.1) {
+                isReadyToStart = true;
+            }
+            
+            let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart,
+                                    "lastCalibrated": "Placeholder",
+                                    "stepLength": "Placeholder"]
+            
             let pluginResult = CDVPluginResult(
                 status: CDVCommandStatus_OK,
-                messageAs: "Accuracy: \(accuracy)."
+                messageAs: pluginInfo
             )
             pluginResult?.setKeepCallbackAs(true)
             
             self.commandDelegate!.send(
                 pluginResult,
-                callbackId: distanceCallbackId
+                callbackId: pluginInfoEventCallbackId
+            )
+        }
+        
+        if distanceEventCallbackId != nil {
+            let pluginResult = CDVPluginResult(
+                status: CDVCommandStatus_OK,
+                messageAs: "New Distance Event"
+            )
+            pluginResult?.setKeepCallbackAs(true)
+            
+            self.commandDelegate!.send(
+                pluginResult,
+                callbackId: distanceEventCallbackId
             )
         }
     }
