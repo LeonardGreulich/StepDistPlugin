@@ -207,6 +207,9 @@ import CoreMotion
             }
             
             locationEvents.append(locationEvent)
+        } else {
+            locationEvents.removeAll()
+            calibrationCandidateDistance = 0.0
         }
     }
     

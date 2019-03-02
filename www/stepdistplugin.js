@@ -2,7 +2,7 @@ var cordova = require('cordova');
 var exec = require('cordova/exec');
 
 var distanceFilter = 2;
-var accuracyFilter = 8;
+var accuracyFilter = 10;
 var perpendicularDistanceFilter = 0.00002;
 var locationsSequenceFilter = 10;
 var locationsSequenceDistanceFilter = 20;
