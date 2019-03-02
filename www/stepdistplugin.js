@@ -1,8 +1,11 @@
 var cordova = require('cordova');
 var exec = require('cordova/exec');
 
-var distanceFilter = 0;
+var distanceFilter = 2;
 var accuracyFilter = 8;
+var perpendicularDistanceFilter = 0.00002;
+var locationsSequenceFilter = 10;
+var locationsSequenceDistanceFilter = 20;
 
 var Stepdistplugin = function() {
     this.channels = {
@@ -45,10 +48,15 @@ var onResume = function() {
 
 var startLocalization = function() {
     console.log("Start localization");
+
     var options = {
         distanceFilter: distanceFilter,
-        accuracyFilter: accuracyFilter
+        accuracyFilter: accuracyFilter,
+        perpendicularDistanceFilter: perpendicularDistanceFilter,
+        locationsSequenceFilter: locationsSequenceFilter,
+        locationsSequenceDistanceFilter: locationsSequenceDistanceFilter
       };
+      
     exec(pluginInfoEvent, error, "stepdistplugin", "startLocalization", [options])
 }
 
@@ -67,6 +75,7 @@ var error = function() {
 
 var pluginInfoEvent = function(pluginInfoEvent) {
     cordova.fireDocumentEvent("isreadytostart", [pluginInfoEvent.isReadyToStart]);
+    cordova.fireDocumentEvent("lastcalibration", [pluginInfoEvent.isCalibrating, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength]);
 }
 
 var onDistanceTraveled = function(distanceTraveledEvent) {

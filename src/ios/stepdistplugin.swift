@@ -6,15 +6,22 @@ import CoreMotion
     var locationManager: CLLocationManager!
     var pedometer: CMPedometer!
     
-    var stepEvents: [CMPedometerData]!
     var locationEvents: [CLLocation]!
     
     var pluginInfoEventCallbackId: String!
     var distanceEventCallbackId: String!
     var distanceFilter: Double!
     var accuracyFilter: Double!
-    var distanceTraveled: Int!
-    var stepsTaken: Int!
+    var perpendicularDistanceFilter: Double!
+    var locationsSequenceDistanceFilter: Double!
+    var stepLength: Double!
+    var locationsSequenceFilter: Int!
+    var distanceTraveledPersistent: Int!
+    var distanceTraveledProvisional: Int!
+    var stepsTakenPersistent: Int!
+    var stepsTakenProvisional: Int!
+    var calibrationInProgress: Bool!
+    var lastCalibration: Date!
     
     @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
         pluginInfoEventCallbackId = command.callbackId
@@ -23,9 +30,16 @@ import CoreMotion
             return
         }
         
-        if let distanceFilter = arguments["distanceFilter"] as? Double, let accuracyFilter = arguments["accuracyFilter"] as? Double {
+        if let distanceFilter = arguments["distanceFilter"] as? Double,
+        let accuracyFilter = arguments["accuracyFilter"] as? Double,
+        let perpendicularDistanceFilter = arguments["perpendicularDistanceFilter"] as? Double,
+        let locationsSequenceFilter = arguments["locationsSequenceFilter"] as? Int,
+        let locationsSequenceDistanceFilter = arguments["locationsSequenceDistanceFilter"] as? Double {
             self.distanceFilter = distanceFilter
             self.accuracyFilter = accuracyFilter
+            self.perpendicularDistanceFilter = perpendicularDistanceFilter
+            self.locationsSequenceFilter = locationsSequenceFilter
+            self.locationsSequenceDistanceFilter = locationsSequenceDistanceFilter
         } else {
             return
         }
@@ -45,16 +59,9 @@ import CoreMotion
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
-        let pluginResult = CDVPluginResult(
-            status: CDVCommandStatus_OK,
-            messageAs: createPluginInfo(accuracy: 9999.0)
-        )
-        pluginResult?.setKeepCallbackAs(true)
+        loadStepLength()
         
-        self.commandDelegate!.send(
-            pluginResult,
-            callbackId: command.callbackId
-        )
+        sendPluginInfo()
     }
 
     @objc(stopLocalization:) func stopLocalization(command: CDVInvokedUrlCommand) {
@@ -74,29 +81,19 @@ import CoreMotion
     @objc(startMeasuringDistance:) func startMeasuringDistance(command: CDVInvokedUrlCommand) {     
         distanceEventCallbackId = command.callbackId
         
-        stepEvents = []
         locationEvents = []
-        
-        distanceTraveled = 0
-        stepsTaken = 0
+        loadStepLength()
+        distanceTraveledPersistent = 0
+        distanceTraveledProvisional = 0
+        stepsTakenPersistent = 0
+        stepsTakenProvisional = 0
+        calibrationInProgress = false
         
         pedometer.startUpdates(from: Date(), withHandler: { (data, error) in
             if let pedometerData: CMPedometerData = data {
-                self.stepEvents.append(pedometerData)
-                self.stepsTaken = pedometerData.numberOfSteps.intValue
+                self.processStepEvent(pedometerData)
             }
         })
-        
-        let pluginResult = CDVPluginResult(
-            status: CDVCommandStatus_OK,
-            messageAs: "Distance measuring started"
-        )
-        pluginResult?.setKeepCallbackAs(true)
-        
-        self.commandDelegate!.send(
-            pluginResult,
-            callbackId: distanceEventCallbackId
-        )
     }
 
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {     
@@ -121,69 +118,141 @@ import CoreMotion
         }
         
         if pluginInfoEventCallbackId != nil {
-            let pluginInfo = createPluginInfo(accuracy: locationEvent.horizontalAccuracy)
-            
-            let pluginResult = CDVPluginResult(
-                status: CDVCommandStatus_OK,
-                messageAs: pluginInfo
-            )
-            pluginResult?.setKeepCallbackAs(true)
-            
-            self.commandDelegate!.send(
-                pluginResult,
-                callbackId: pluginInfoEventCallbackId
-            )
+            sendPluginInfo(accuracy: locationEvent.horizontalAccuracy)
         }
         
         if distanceEventCallbackId != nil {
-            processLocationEvent(locationEvent: locationEvent)
-            
-            let pluginResult = CDVPluginResult(
-                status: CDVCommandStatus_OK,
-                messageAs: ["distanceTraveled": distanceTraveled, "stepsTaken": stepsTaken]
-            )
-            pluginResult?.setKeepCallbackAs(true)
-            
-            self.commandDelegate!.send(
-                pluginResult,
-                callbackId: distanceEventCallbackId
-            )
+            processLocationEvent(locationEvent)
         }
     }
     
-    func createPluginInfo(accuracy: Double) -> [String : Any] {
+    func sendPluginInfo(accuracy: Double = 9999.0) {
         var isReadyToStart = false;
-        
-        if accuracy <= accuracyFilter {
+
+        if roundAccuracy(accuracy) <= accuracyFilter {
             isReadyToStart = true;
         }
         
-        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "lastCalibrated": "Placeholder", "stepLength": "Placeholder"]
-        return pluginInfo
+        var lastCalibrationString = "Not calibrated"
+        if lastCalibration != nil {
+            lastCalibrationString = lastCalibration.description
+        }
+        
+        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "isCalibrating": calibrationInProgress, "lastCalibrated": lastCalibrationString, "stepLength": stepLength]
+        
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK,
+            messageAs: pluginInfo
+        )
+        pluginResult?.setKeepCallbackAs(true)
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: pluginInfoEventCallbackId
+        )
     }
     
-    func processLocationEvent(locationEvent: CLLocation) {
-        if locationEvent.horizontalAccuracy <= accuracyFilter {
+    func processStepEvent(_ stepEvent: CMPedometerData) {
+        self.stepsTakenProvisional = stepEvent.numberOfSteps.intValue - stepsTakenPersistent
+        self.distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
+        
+        let stepsTaken: Int = stepsTakenProvisional + stepsTakenPersistent
+        let distanceTraveled: Int = distanceTraveledProvisional + distanceTraveledPersistent
+        
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK,
+            messageAs: ["distanceTraveled": distanceTraveled, "stepsTaken": stepsTaken]
+        )
+        pluginResult?.setKeepCallbackAs(true)
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: distanceEventCallbackId
+        )
+    }
+    
+    func processLocationEvent(_ locationEvent: CLLocation) {
+        if roundAccuracy(locationEvent.horizontalAccuracy) <= accuracyFilter {
+            if locationLiesOnPath(locationEvent) {
+                let cumulativeDistance = calculateCumulativeDistance()
+                if cumulativeDistance >= locationsSequenceDistanceFilter {
+                    calibrationInProgress = true
+                    saveStepLength(cumulativeDistance / Double(stepsTakenProvisional))
+                    sendPluginInfo(accuracy: locationEvent.horizontalAccuracy)
+                }
+            } else {
+                if calibrationInProgress {
+                    stepsTakenPersistent = stepsTakenProvisional
+                    distanceTraveledPersistent = distanceTraveledProvisional
+                }
+                locationEvents.removeAll()
+                calibrationInProgress = false
+            }
+            
             locationEvents.append(locationEvent)
         }
-        
-        if locationEvents.count > 1 {
-            distanceTraveled = calculateCumulativeDistance()
-        }
     }
     
-    func calculateCumulativeDistance() -> Int {
-        var lastLocationEvent: CLLocation!
+    func locationLiesOnPath(_ location: CLLocation) -> Bool {
+        guard locationEvents.count >= 2 else {
+            return true
+        }
+        
+        var locations: [CLLocation] = locationEvents
+        if locationEvents.count >= locationsSequenceFilter {
+            locations = Array(locationEvents[locationEvents.count-locationsSequenceFilter...locationsSequenceFilter])
+        }
+        
+        let latitudes: [Double] = locations.map { $0.coordinate.latitude }
+        let longitudes: [Double] = locations.map { $0.coordinate.longitude }
+        
+        let latitudesMean: Double = latitudes.reduce(0, +) / Double(latitudes.count)
+        let longitudesMean: Double = longitudes.reduce(0, +) / Double(longitudes.count)
+        
+        var covariance: Double = 0.0
+        for i in 0...latitudes.count-1  {
+            covariance += (longitudes[i]-longitudesMean)*(latitudes[i]-latitudesMean)
+        }
+
+        let variance: Double = longitudes.reduce(0) {$0 + pow($1-longitudesMean, 2.0)}
+        
+        let b1: Double = covariance/variance
+        let b0: Double = latitudesMean-b1*longitudesMean
+        
+        let r: Double = (location.coordinate.longitude+location.coordinate.latitude*b1-b0*b1)/(pow(b1, 2.0)+1)
+        let longitude_perpendicular: Double = r
+        let latitude_perpendicular: Double = b0+b1*r
+        let dist:Double = sqrt(pow(location.coordinate.longitude-longitude_perpendicular, 2.0)+pow(location.coordinate.latitude-latitude_perpendicular, 2.0))
+        
+        return dist <= perpendicularDistanceFilter
+    }
+    
+    func calculateCumulativeDistance() -> Double {
+        var lastLocation: CLLocation!
         var cumulativeDistance: Double = 0.0
         
-        for locationEvent: CLLocation in locationEvents {
-            if lastLocationEvent != nil {
-                cumulativeDistance += locationEvent.distance(from: lastLocationEvent)
+        for location: CLLocation in locationEvents {
+            if lastLocation != nil {
+                cumulativeDistance += location.distance(from: lastLocation)
             }
-            lastLocationEvent = locationEvent
+            lastLocation = location
         }
         
-        return Int(cumulativeDistance)
+        return cumulativeDistance
+    }
+
+    func roundAccuracy(_ accuracy: Double) -> Double {
+        return Double(round(10*accuracy)/10)
     }
     
+    func loadStepLength() {
+        stepLength = 0.78
+        lastCalibration = nil
+    }
+    
+    func saveStepLength(_ stepLength: Double) {
+        self.stepLength = stepLength
+        lastCalibration = Date()
+    }
+
 }
