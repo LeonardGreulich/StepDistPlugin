@@ -74,12 +74,37 @@ var error = function() {
 }
 
 var pluginInfoEvent = function(pluginInfoEvent) {
-    cordova.fireDocumentEvent("isreadytostart", [pluginInfoEvent.isReadyToStart]);
-    cordova.fireDocumentEvent("lastcalibration", [pluginInfoEvent.isCalibrating, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength]);
+    cordova.fireDocumentEvent("isreadytostart", {isReadyToStart: pluginInfoEvent.isReadyToStart});
+    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.isCalibrating, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength));
 }
 
 var onDistanceTraveled = function(distanceTraveledEvent) {
     cordova.fireDocumentEvent("distancetraveled", [distanceTraveledEvent]);
+}
+
+function prepareLastCalibrationEvent(isCalibrating, lastCalibrated, stepLength) {
+    var lastCalibratedString;
+    if (lastCalibrated === 0) {
+        lastCalibratedString = "--"
+    } else {
+        lastCalibratedString = unixTimestampToDateString(lastCalibrated)
+    }
+
+    var stepLengthString;
+    if (stepLength === 0.0) {
+        stepLengthString = "--"
+    } else {
+        stepLengthString = stepLength.toFixed(2);
+    }
+
+    return {isCalibrating: isCalibrating,
+        lastCalibrated: lastCalibratedString,
+        stepLength: stepLengthString}
+}
+
+function unixTimestampToDateString(timestamp) {
+    var date = new Date(timestamp*1000);
+    return date.toLocaleString();
 }
 
 var stepdistplugin = new Stepdistplugin();

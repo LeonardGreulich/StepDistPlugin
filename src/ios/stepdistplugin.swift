@@ -22,8 +22,8 @@ import CoreMotion
     var distanceTraveledProvisional: Int!
     var stepsTakenPersistent: Int!
     var stepsTakenProvisional: Int!
+    var lastCalibrated: Int!
     var calibrationInProgress: Bool!
-    var lastCalibration: Date!
     
     @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
         pluginInfoEventCallbackId = command.callbackId
@@ -136,12 +136,7 @@ import CoreMotion
             isReadyToStart = true;
         }
         
-        var lastCalibrationString = "Not calibrated"
-        if lastCalibration != nil {
-            lastCalibrationString = lastCalibration.description
-        }
-        
-        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "isCalibrating": calibrationInProgress, "lastCalibrated": lastCalibrationString, "stepLength": stepLength]
+        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "isCalibrating": calibrationInProgress, "lastCalibrated": lastCalibrated, "stepLength": stepLength]
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -266,13 +261,16 @@ import CoreMotion
     }
     
     func loadStepLength() {
-        stepLength = 0.78
-        lastCalibration = nil
+        stepLength = UserDefaults.standard.double(forKey: "stepLength")
+        lastCalibrated = UserDefaults.standard.integer(forKey: "lastCalibrated")
     }
     
     func saveStepLength(_ stepLength: Double) {
         self.stepLength = stepLength
-        lastCalibration = Date()
+        self.lastCalibrated = Int(Date().timeIntervalSince1970)
+        
+        UserDefaults.standard.set(self.stepLength, forKey: "stepLength")
+        UserDefaults.standard.set(self.lastCalibrated, forKey: "lastCalibrated")
     }
 
 }
