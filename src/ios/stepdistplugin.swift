@@ -129,14 +129,14 @@ import CoreMotion
         }
     }
     
-    func sendPluginInfo(accuracy: Double = 9999.0) {
+    func sendPluginInfo(accuracy: Double = 9999.0, debugInfo: String = "") {
         var isReadyToStart = false;
 
-        if roundAccuracy(accuracy) <= accuracyFilter {
+        if roundAccuracy(accuracy) <= accuracyFilter || stepLength != 0.0 {
             isReadyToStart = true;
         }
         
-        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "isCalibrating": calibrationInProgress, "lastCalibrated": lastCalibrated, "stepLength": stepLength]
+        let pluginInfo: [String : Any] = ["isReadyToStart": isReadyToStart, "debugInfo": debugInfo, "lastCalibrated": lastCalibrated, "stepLength": stepLength]
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -162,9 +162,10 @@ import CoreMotion
             calibrationInProgress = false
             stepsTakenPersistent = stepsTakenProvisional
             distanceTraveledPersistent = distanceTraveledProvisional
+            stepEvents = [stepEvent]
         }
         
-        stepsTakenProvisional = stepEvent.numberOfSteps.intValue - stepsTakenPersistent
+        stepsTakenProvisional = stepEvents.last!.numberOfSteps.intValue - stepsTakenPersistent
         distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
         
         let pluginResult = CDVPluginResult(
@@ -199,12 +200,14 @@ import CoreMotion
             } else {
                 locationEvents.removeAll()
                 calibrationCandidateDistance = 0.0
+                sendPluginInfo(debugInfo: "Calibr. cancel.: Path deviation");
             }
             
             locationEvents.append(locationEvent)
         } else {
             locationEvents.removeAll()
             calibrationCandidateDistance = 0.0
+            sendPluginInfo(debugInfo: "Calibr. cancel.: Accuracy (\(roundAccuracy(locationEvent.horizontalAccuracy)))");
         }
     }
     

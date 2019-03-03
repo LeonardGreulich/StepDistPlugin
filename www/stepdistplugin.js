@@ -75,14 +75,14 @@ var error = function() {
 
 var pluginInfoEvent = function(pluginInfoEvent) {
     cordova.fireDocumentEvent("isreadytostart", {isReadyToStart: pluginInfoEvent.isReadyToStart});
-    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.isCalibrating, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength));
+    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.debugInfo, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength));
 }
 
 var onDistanceTraveled = function(distanceTraveledEvent) {
     cordova.fireDocumentEvent("distancetraveled", [distanceTraveledEvent]);
 }
 
-function prepareLastCalibrationEvent(isCalibrating, lastCalibrated, stepLength) {
+function prepareLastCalibrationEvent(debugInfo, lastCalibrated, stepLength) {
     var lastCalibratedString;
     if (lastCalibrated === 0) {
         lastCalibratedString = "--"
@@ -97,7 +97,7 @@ function prepareLastCalibrationEvent(isCalibrating, lastCalibrated, stepLength) 
         stepLengthString = stepLength.toFixed(2);
     }
 
-    return {isCalibrating: isCalibrating,
+    return {debugInfo: debugInfo,
         lastCalibrated: lastCalibratedString,
         stepLength: stepLengthString}
 }
