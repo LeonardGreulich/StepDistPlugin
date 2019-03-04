@@ -1,12 +1,17 @@
 package cordova.plugin.stepdist;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Bundle;
 
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
 
+import org.apache.cordova.PermissionHelper;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,7 +22,7 @@ import static android.content.Context.LOCATION_SERVICE;
 /**
  * This class echoes a string called from JavaScript.
  */
-public class stepdistplugin extends CordovaPlugin {
+public class stepdistplugin extends CordovaPlugin implements LocationListener {
 
     private LocationManager locationManager;
     private LocationListener locationListener;
@@ -37,6 +42,16 @@ public class stepdistplugin extends CordovaPlugin {
         Context context = this.cordova.getActivity().getApplicationContext();
         locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
 
+        if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+
+        try {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+        } catch (SecurityException securityException) {
+            securityException.printStackTrace();
+        }
+
         JSONObject obj = new JSONObject();
         try {
             obj.put("isReadyToStart", true);
@@ -50,11 +65,23 @@ public class stepdistplugin extends CordovaPlugin {
         callbackContext.sendPluginResult(result);
     }
 
-    private void coolMethod(String message, CallbackContext callbackContext) {
-        if (message != null && message.length() > 0) {
-            callbackContext.success(message);
-        } else {
-            callbackContext.error("Expected one non-empty string argument.");
-        }
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onStatusChanged(String s, int i, Bundle bundle) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String s) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String s) {
+
     }
 }
