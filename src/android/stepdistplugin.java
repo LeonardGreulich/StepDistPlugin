@@ -1,11 +1,14 @@
 package cordova.plugin.stepdist;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
-import android.content.pm.PackageManager;
+import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import org.apache.cordova.CordovaPlugin;
@@ -24,8 +27,12 @@ import static android.content.Context.LOCATION_SERVICE;
  */
 public class stepdistplugin extends CordovaPlugin implements LocationListener {
 
+    private Context applicationContext;
     private LocationManager locationManager;
-    private LocationListener locationListener;
+
+    public stepdistplugin() {
+        createNotificationChannel();
+    }
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
@@ -39,8 +46,8 @@ public class stepdistplugin extends CordovaPlugin implements LocationListener {
     }
 
     private void startLocalization(JSONArray args, CallbackContext callbackContext) {
-        Context context = this.cordova.getActivity().getApplicationContext();
-        locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
+        applicationContext = this.cordova.getActivity().getApplicationContext();
+        locationManager = (LocationManager) applicationContext.getSystemService(LOCATION_SERVICE);
 
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -51,6 +58,10 @@ public class stepdistplugin extends CordovaPlugin implements LocationListener {
         } catch (SecurityException securityException) {
             securityException.printStackTrace();
         }
+
+        Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
+        serviceIntent.putExtra("Test", "Test ForegroundService");
+        applicationContext.startService(serviceIntent);
 
         JSONObject obj = new JSONObject();
         try {
@@ -63,6 +74,25 @@ public class stepdistplugin extends CordovaPlugin implements LocationListener {
         result.setKeepCallback(false);
 
         callbackContext.sendPluginResult(result);
+    }
+
+    private void stopLocalization(CallbackContext callbackContext) {
+        Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
+        applicationContext.stopService(serviceIntent);
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    "stepDistServiceChannel",
+                    "Distance Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+
+            NotificationManager manager = applicationContext.getSystemService(NotificationManager.class);
+            assert manager != null;
+            manager.createNotificationChannel(serviceChannel);
+        }
     }
 
     @Override
