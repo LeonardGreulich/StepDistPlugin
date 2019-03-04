@@ -1,2 +1,51 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin id="cordova-plugin-stepdist" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android"><name>stepdistplugin</name><js-module name="stepdistplugin" src="www/stepdistplugin.js"><clobbers target="stepdist" /></js-module><platform name="ios"><config-file parent="/*" target="config.xml"><feature name="stepdistplugin"><param name="ios-package" value="stepdistplugin" /></feature></config-file><source-file src="src/ios/stepdistplugin.swift" /></platform><platform name="android"><config-file parent="/*" target="res/xml/config.xml"><feature name="stepdistplugin"><param name="android-package" value="cordova.plugin.stepdist.stepdistplugin" /></feature></config-file><config-file parent="/*" target="AndroidManifest.xml"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.FOREGROUND_SERVICE" /><uses-feature android:name="android.hardware.location.gps" /></config-file><source-file src="src/android/stepdistplugin.java" target-dir="src/cordova/plugin/stepdist/" /><source-file src="src/android/DistanceService.java" target-dir="src/cordova/plugin/stepdist/" /><framework src="com.android.support:appcompat-v7:27.1.1" /><framework src="com.google.android.gms:play-services-fitness:16.0.1" /><framework src="com.google.android.gms:play-services-auth:16.0.1" /></platform></plugin>
+<plugin id="cordova-plugin-stepdist" version="0.0.1"
+	xmlns="http://apache.org/cordova/ns/plugins/1.0"
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	<name>stepdistplugin</name>
+	<js-module name="stepdistplugin" src="www/stepdistplugin.js">
+		<clobbers target="stepdist" />
+	</js-module>
+	<platform name="ios">
+		<config-file parent="/*" target="config.xml">
+			<feature name="stepdistplugin">
+				<param name="ios-package" value="stepdistplugin" />
+			</feature>
+		</config-file>
+        <config-file parent="UIBackgroundModes" target="*-Info.plist">
+            <array>
+                <string>location</string>
+            </array>
+        </config-file>
+        <config-file parent="NSLocationWhenInUseUsageDescription" target="*-Info.plist">
+            <string>Location access for step length calibration.</string>
+        </config-file>
+        <config-file parent="NSLocationAlwaysAndWhenInUseUsageDescription" target="*-Info.plist">
+            <string>Location access for step length calibration.</string>
+        </config-file>
+        <config-file parent="NSMotionUsageDescription" target="*-Info.plist">
+            <string>Motion access for step counting.</string>
+        </config-file>
+		<source-file src="src/ios/stepdistplugin.swift" />
+	</platform>
+	<platform name="android">
+		<config-file parent="/*" target="res/xml/config.xml">
+			<feature name="stepdistplugin">
+				<param name="android-package" value="cordova.plugin.stepdist.stepdistplugin" />
+			</feature>
+		</config-file>
+		<config-file parent="/*" target="AndroidManifest.xml">
+			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+			<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+			<uses-feature android:name="android.hardware.location.gps" />
+		</config-file>
+        <config-file parent="/*/application" target="AndroidManifest.xml">
+			<service android:name="cordova.plugin.stepdist.DistanceService" />
+		</config-file>
+		<source-file src="src/android/stepdistplugin.java" target-dir="src/cordova/plugin/stepdist/" />
+		<source-file src="src/android/DistanceService.java" target-dir="src/cordova/plugin/stepdist/" />
+		<framework src="com.android.support:appcompat-v7:27.1.1" />
+		<framework src="com.google.android.gms:play-services-fitness:16.0.1" />
+		<framework src="com.google.android.gms:play-services-auth:16.0.1" />
+	</platform>
+</plugin>
