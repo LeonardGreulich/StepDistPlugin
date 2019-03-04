@@ -30,10 +30,6 @@ public class stepdistplugin extends CordovaPlugin implements LocationListener {
     private Context applicationContext;
     private LocationManager locationManager;
 
-    public stepdistplugin() {
-        createNotificationChannel();
-    }
-
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("startLocalization")) {
@@ -47,6 +43,7 @@ public class stepdistplugin extends CordovaPlugin implements LocationListener {
 
     private void startLocalization(JSONArray args, CallbackContext callbackContext) {
         applicationContext = this.cordova.getActivity().getApplicationContext();
+        createNotificationChannel();
         locationManager = (LocationManager) applicationContext.getSystemService(LOCATION_SERVICE);
 
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
