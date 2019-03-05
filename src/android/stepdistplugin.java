@@ -1,6 +1,7 @@
 package cordova.plugin.stepdist;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ComponentName;
@@ -9,6 +10,10 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
+
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.fitness.FitnessOptions;
+import com.google.android.gms.fitness.data.DataType;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -22,6 +27,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
+
+    private final int GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = System.identityHashCode(this) & 0xFFFF;
 
     private Context applicationContext;
     private CallbackContext pluginInfoEventCallback;
@@ -76,6 +83,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     private void startLocalization(JSONObject args) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
+        } else {
+            authorizeGoogleFit();
         }
 
         Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
@@ -137,4 +146,19 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         stopLocalization(pluginInfoEventCallback);
         super.onDestroy();
     }
+
+    void authorizeGoogleFit() {
+        FitnessOptions fitnessOptions = FitnessOptions.builder()
+                .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+                .build();
+
+        if (!GoogleSignIn.hasPermissions(GoogleSignIn.getLastSignedInAccount(applicationContext), fitnessOptions)) {
+            GoogleSignIn.requestPermissions(
+                    this.cordova.getActivity(),
+                    GOOGLE_FIT_PERMISSIONS_REQUEST_CODE,
+                    GoogleSignIn.getLastSignedInAccount(applicationContext),
+                    fitnessOptions);
+        }
+    }
+
 }
