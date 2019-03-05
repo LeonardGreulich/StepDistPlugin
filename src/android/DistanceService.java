@@ -4,14 +4,12 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.hardware.Sensor;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -24,15 +22,10 @@ import com.google.android.gms.fitness.data.Field;
 import com.google.android.gms.fitness.request.DataSourcesRequest;
 import com.google.android.gms.fitness.request.OnDataPointListener;
 import com.google.android.gms.fitness.request.SensorRequest;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import greulich.leonard.stepdist.MainActivity;
@@ -156,22 +149,6 @@ public class DistanceService extends Service implements LocationListener {
     }
 
     private void identifyStepDataSourcesAndStartCounting() {
-        sensorsClient = Fitness.getSensorsClient(this, GoogleSignIn.getLastSignedInAccount(this));
-
-        sensorsClient.findDataSources(
-                        new DataSourcesRequest.Builder()
-                                .setDataTypes(DataType.TYPE_STEP_COUNT_DELTA)
-                                .setDataSourceTypes(DataSource.TYPE_RAW, DataSource.TYPE_DERIVED)
-                                .build())
-                .addOnSuccessListener(
-                        dataSources -> {
-                            for (DataSource dataSource : dataSources) {
-                                startStepCounting(dataSource);
-                            }
-                        });
-    }
-
-    private void startStepCounting(DataSource dataSource) {
         stepCountListener = new OnDataPointListener() {
             boolean firstDataPoint = true;
             int totalSteps = 0;
@@ -190,17 +167,49 @@ public class DistanceService extends Service implements LocationListener {
             }
         };
 
+        sensorsClient = Fitness.getSensorsClient(this, GoogleSignIn.getLastSignedInAccount(this));
+
+        sensorsClient.findDataSources(
+                        new DataSourcesRequest.Builder()
+                                .setDataTypes(DataType.TYPE_STEP_COUNT_DELTA)
+                                .setDataSourceTypes(DataSource.TYPE_RAW, DataSource.TYPE_DERIVED)
+                                .build())
+                .addOnSuccessListener(
+                        dataSources -> {
+                            for (DataSource dataSource : dataSources) {
+                                startStepCounting(dataSource);
+                            }
+                        });
+    }
+
+    private void startStepCounting(DataSource dataSource) {
         sensorsClient.add(new SensorRequest.Builder()
                                 .setDataType(dataSource.getDataType())
                                 .setDataSource(dataSource)
                                 .setSamplingRate(1, TimeUnit.SECONDS)
                                 .setTimeout(1, TimeUnit.HOURS)
-                                .build(), stepCountListener);
+                                .build(), stepCountListener)
+                .addOnCompleteListener(
+                        task -> {
+                            if (task.isSuccessful()) {
+                                System.out.println("Listener registered!");
+                            } else {
+                                System.out.println("Listener not registered!");
+                            }
+                        });
     }
 
     private void stopStepCounting() {
         assert sensorsClient != null;
-        sensorsClient.remove(stepCountListener);
+        sensorsClient.remove(stepCountListener)
+                .addOnCompleteListener(
+                        task -> {
+                            if (task.isSuccessful() && task.getResult()) {
+                                System.out.println("Listener was removed!");
+                            } else {
+                                System.out.println("Listener was not removed!");
+                            }
+                        });
     }
 
     public interface DistanceServiceDelegate {
