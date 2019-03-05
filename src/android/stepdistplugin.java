@@ -121,7 +121,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     @Override
     public void updatePluginInfo(JSONObject pluginInfo) {
         PluginResult result = new PluginResult(PluginResult.Status.OK, pluginInfo);
-        result.setKeepCallback(false);
+        result.setKeepCallback(true);
 
         pluginInfoEventCallback.sendPluginResult(result);
     }
@@ -129,5 +129,12 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     @Override
     public void updateDistanceInfo(JSONObject distanceInfo) {
 
+    }
+
+    @Override
+    public void onDestroy() {
+        stopMeasuringDistance(distanceEventCallback);
+        stopLocalization(pluginInfoEventCallback);
+        super.onDestroy();
     }
 }

@@ -77,7 +77,7 @@ public class DistanceService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
-
+        sendPluginInfo("Accuracy: " + String.valueOf(location.getAccuracy()));
     }
 
     @Override
@@ -105,18 +105,30 @@ public class DistanceService extends Service implements LocationListener {
         }
     }
 
-    public void sendPluginInfo() {
+    public void sendPluginInfo(Double Accuracy, String debugInfo) {
         JSONObject pluginInfo = new JSONObject();
         try {
             pluginInfo.put("isReadyToStart", true);
-            pluginInfo.put("debugInfo", "Hello World");
-            pluginInfo.put("stepLength", 0.0);
+            pluginInfo.put("debugInfo", debugInfo);
+            pluginInfo.put("stepLength", 0.78);
             pluginInfo.put("lastCalibrated", 123456712);
         } catch (JSONException e) {
             System.out.println("Error");
         }
 
         delegate.updatePluginInfo(pluginInfo);
+    }
+
+    public void sendPluginInfo() {
+        sendPluginInfo(9999.0, "");
+    }
+
+    public void sendPluginInfo(String debugInfo) {
+        sendPluginInfo(9999.0, debugInfo);
+    }
+
+    public void sendPluginInfo(Double accuracy) {
+        sendPluginInfo(accuracy, "");
     }
 
     public interface DistanceServiceDelegate {
