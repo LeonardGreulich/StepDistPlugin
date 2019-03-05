@@ -12,12 +12,16 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import greulich.leonard.stepdist.MainActivity;
 import greulich.leonard.stepdist.R;
 
 public class DistanceService extends Service implements LocationListener {
 
     private LocationManager locationManager;
+    private DistanceServiceDelegate delegate;
     private final IBinder mBinder = new LocalBinder();
 
     private Integer distanceFilter;
@@ -91,10 +95,33 @@ public class DistanceService extends Service implements LocationListener {
 
     }
 
+    public void setDelegate(DistanceServiceDelegate distanceServiceDelegate) {
+        delegate = distanceServiceDelegate;
+    }
+
     public class LocalBinder extends Binder {
         public DistanceService getService(){
             return DistanceService.this;
         }
+    }
+
+    public void sendPluginInfo() {
+        JSONObject pluginInfo = new JSONObject();
+        try {
+            pluginInfo.put("isReadyToStart", true);
+            pluginInfo.put("debugInfo", "Hello World");
+            pluginInfo.put("stepLength", 0.0);
+            pluginInfo.put("lastCalibrated", 123456712);
+        } catch (JSONException e) {
+            System.out.println("Error");
+        }
+
+        delegate.updatePluginInfo(pluginInfo);
+    }
+
+    public interface DistanceServiceDelegate {
+        void updatePluginInfo(JSONObject pluginInfo);
+        void updateDistanceInfo(JSONObject distanceInfo);
     }
 
 }

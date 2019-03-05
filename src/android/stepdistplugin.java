@@ -21,15 +21,19 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class stepdistplugin extends CordovaPlugin {
+public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
     private Context applicationContext;
+    private CallbackContext pluginInfoEventCallback;
+    private CallbackContext distanceEventCallback;
     private DistanceService distanceService;
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             distanceService = ((DistanceService.LocalBinder)service).getService();
+            distanceService.setDelegate(stepdistplugin.this);
+            distanceService.sendPluginInfo();
         }
 
         @Override
@@ -49,15 +53,19 @@ public class stepdistplugin extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("startLocalization")) {
-            startLocalization(args.getJSONObject(0), callbackContext);
+            pluginInfoEventCallback = callbackContext;
+            startLocalization(args.getJSONObject(0));
             return true;
         } else if (action.equals("stopLocalization")) {
+            pluginInfoEventCallback = null;
             stopLocalization(callbackContext);
             return true;
         } else if (action.equals("startMeasuringDistance")) {
+            distanceEventCallback = callbackContext;
             startMeasuringDistance(callbackContext);
             return true;
         } else if (action.equals("stopMeasuringDistance")) {
+            distanceEventCallback = null;
             stopMeasuringDistance(callbackContext);
             return true;
         }
@@ -65,30 +73,20 @@ public class stepdistplugin extends CordovaPlugin {
         return false;
     }
 
-    private void startLocalization(JSONObject args, CallbackContext callbackContext) throws JSONException {
+    private void startLocalization(JSONObject args) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
         }
 
         Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
+
         serviceIntent.putExtra("distanceFilter", args.getInt("distanceFilter"));
         serviceIntent.putExtra("accuracyFilter", args.getDouble("distanceFilter"));
         serviceIntent.putExtra("perpendicularDistanceFilter", args.getDouble("distanceFilter"));
         serviceIntent.putExtra("locationsSequenceFilter", args.getInt("distanceFilter"));
         serviceIntent.putExtra("locationsSequenceDistanceFilter", args.getDouble("distanceFilter"));
+
         applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
-
-        JSONObject obj = new JSONObject();
-        try {
-            obj.put("isReadyToStart", true);
-        } catch (JSONException e) {
-            System.out.println("Error");
-        }
-
-        PluginResult result = new PluginResult(PluginResult.Status.OK, obj);
-        result.setKeepCallback(false);
-
-        callbackContext.sendPluginResult(result);
     }
 
     private void stopLocalization(CallbackContext callbackContext) {
@@ -120,4 +118,16 @@ public class stepdistplugin extends CordovaPlugin {
         }
     }
 
+    @Override
+    public void updatePluginInfo(JSONObject pluginInfo) {
+        PluginResult result = new PluginResult(PluginResult.Status.OK, pluginInfo);
+        result.setKeepCallback(false);
+
+        pluginInfoEventCallback.sendPluginResult(result);
+    }
+
+    @Override
+    public void updateDistanceInfo(JSONObject distanceInfo) {
+
+    }
 }
