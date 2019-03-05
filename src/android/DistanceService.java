@@ -4,25 +4,49 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.hardware.Sensor;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
+
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.fitness.Fitness;
+import com.google.android.gms.fitness.SensorsClient;
+import com.google.android.gms.fitness.data.DataPoint;
+import com.google.android.gms.fitness.data.DataSource;
+import com.google.android.gms.fitness.data.DataType;
+import com.google.android.gms.fitness.data.Field;
+import com.google.android.gms.fitness.request.DataSourcesRequest;
+import com.google.android.gms.fitness.request.OnDataPointListener;
+import com.google.android.gms.fitness.request.SensorRequest;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import greulich.leonard.stepdist.MainActivity;
 import greulich.leonard.stepdist.R;
 
 public class DistanceService extends Service implements LocationListener {
 
+    private final IBinder mBinder = new LocalBinder();
+
     private LocationManager locationManager;
     private DistanceServiceDelegate delegate;
-    private final IBinder mBinder = new LocalBinder();
+
+    private SensorsClient sensorsClient;
+    private OnDataPointListener stepCountListener;
 
     private Integer distanceFilter;
     private Double accuracyFilter;
@@ -68,16 +92,16 @@ public class DistanceService extends Service implements LocationListener {
     }
 
     public void startMeasuringDistance() {
-
+        identifyStepDataSourcesAndStartCounting();
     }
 
     public void stopMeasuringDistance() {
-
+        stopStepCounting();
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        sendPluginInfo("Accuracy: " + String.valueOf(location.getAccuracy()));
+        // sendPluginInfo("Accuracy: " + String.valueOf(location.getAccuracy()));
     }
 
     @Override
@@ -129,6 +153,54 @@ public class DistanceService extends Service implements LocationListener {
 
     public void sendPluginInfo(Double accuracy) {
         sendPluginInfo(accuracy, "");
+    }
+
+    private void identifyStepDataSourcesAndStartCounting() {
+        sensorsClient = Fitness.getSensorsClient(this, GoogleSignIn.getLastSignedInAccount(this));
+
+        sensorsClient.findDataSources(
+                        new DataSourcesRequest.Builder()
+                                .setDataTypes(DataType.TYPE_STEP_COUNT_DELTA)
+                                .setDataSourceTypes(DataSource.TYPE_RAW, DataSource.TYPE_DERIVED)
+                                .build())
+                .addOnSuccessListener(
+                        dataSources -> {
+                            for (DataSource dataSource : dataSources) {
+                                startStepCounting(dataSource);
+                            }
+                        });
+    }
+
+    private void startStepCounting(DataSource dataSource) {
+        stepCountListener = new OnDataPointListener() {
+            boolean firstDataPoint = true;
+            int totalSteps = 0;
+
+            @Override
+            public void onDataPoint(DataPoint dataPoint) {
+                int steps = dataPoint.getValue(Field.FIELD_STEPS).asInt();
+                if (firstDataPoint && steps >= 5) {
+                    firstDataPoint = false;
+                    return;
+                } else {
+                    firstDataPoint = false;
+                }
+                totalSteps += steps;
+                sendPluginInfo("Steps: " + totalSteps);
+            }
+        };
+
+        sensorsClient.add(new SensorRequest.Builder()
+                                .setDataType(dataSource.getDataType())
+                                .setDataSource(dataSource)
+                                .setSamplingRate(1, TimeUnit.SECONDS)
+                                .setTimeout(1, TimeUnit.HOURS)
+                                .build(), stepCountListener);
+    }
+
+    private void stopStepCounting() {
+        assert sensorsClient != null;
+        sensorsClient.remove(stepCountListener);
     }
 
     public interface DistanceServiceDelegate {
