@@ -156,7 +156,7 @@ public class DistanceService extends Service implements LocationListener {
             @Override
             public void onDataPoint(DataPoint dataPoint) {
                 int steps = dataPoint.getValue(Field.FIELD_STEPS).asInt();
-                if (firstDataPoint && steps >= 5) {
+                if ((firstDataPoint && steps >= 5) || steps < 0) {
                     firstDataPoint = false;
                     return;
                 } else {
