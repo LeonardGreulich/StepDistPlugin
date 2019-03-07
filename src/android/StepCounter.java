@@ -1,112 +1,107 @@
-//
-//  ViewController.swift
-//  StepCounterTest
-//
-//  Created by Leo on 2/16/19.
-//  Copyright © 2019 Leonard Greulich. All rights reserved.
-//
+package cordova.plugin.stepdist;
 
-import Foundation
-import CoreMotion
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
-class StepCounter {
-    
-    var motionManager: CMMotionManager!
-    var delegate: StepCounterDelegate!
-    
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.booleans.BooleanList;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+
+public class StepCounter {
+
+    private StepCounterDelegate delegate;
+
     // Parameters
-    private let updateInterval: Double = 0.1 // Sets how often new data from the motion sensors should be received
-    private let bFF: Double = 1.3 // Better fragment factor, when a newer fragment is regarded better
-    private let dL: Double = 0.3 // Deviation length, allowed deviation in length to regard fragments as similar
-    private let dA: Double = 0.3 // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
-    private let rT: Int = 8 // Smoothing timeframe
-    
+    private Double updateInterval = 0.1; // Sets how often new data from the motion sensors should be received
+    private Double bFF = 1.3; // Better fragment factor, when a newer fragment is regarded better
+    private Double dL = 0.3; // Deviation length, allowed deviation in length to regard fragments as similar
+    private Double dA = 0.3; // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
+    private Integer rT = 8; // Smoothing timeframe
+
     // Raw gravity data and information about maxima and minima
-    private var gravityData: [[Double]] = [[], [], []] // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
-    private var gravityFlag: [[Int8]] = [[0], [0], [0]] // Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
-    
+    private List<DoubleArrayList> gravityData = new ArrayList<>(); // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
+    private List<IntArrayList> gravityFlag = new ArrayList<>(); // Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
+
     // Supplementary variables
-    private var representativeFragment: Fragment! // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
-    private var pastThreeExtremaX: [[Int]] = [[], [], []] // Hold the x values of the past three extrema
-    private var pastThreeExtremaY: [[Double]] = [[], [], []] // Holds the y values of the past three extrema
-    private var fragments: [[Fragment]] = [[], [], []] // Holds all found fragments
-    private var similarities: [[Bool]] = [[], [], []] // Holds all information of comparison of fragments and whether they are similar or not
-    private var reprFragmentOfAxis: [Int] = [] // If a representative fragment has been found, its axis is appended to this array
-    private var i: Int = 0 // Simple running index to performantly know how many data points has been stored and processed
-    private var currentStepDates: [Date] = [] // Holds the date and time for each currently found step
-    private var precedingStepDates: [Date] = [] // Holds the date and time for each previously found step
-    
-    func startStepCounting() {
-        resetData()
-        
-        if motionManager == nil {
-            motionManager = CMMotionManager()
-        }
-        
-        motionManager.deviceMotionUpdateInterval = updateInterval
-        motionManager.startDeviceMotionUpdates(to: OperationQueue.current!) { (data, error) in
-            if let motionData = data {
-                self.processMotionData(x: motionData.gravity.x, y: motionData.gravity.y, z: motionData.gravity.z)
-            }
-        }
+    private Fragment representativeFragment = new Fragment(); // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
+    private List<IntList> pastThreeExtremaX = new ArrayList<>(); // Hold the x values of the past three extrema
+    private List<DoubleList> pastThreeExtremaY = new ArrayList<>(); // Holds the y values of the past three extrema
+    private List<List<Fragment>> fragments = new ArrayList<>(); // Holds all found fragments
+    private List<BooleanList> similarities = new ArrayList<>(); // Holds all information of comparison of fragments and whether they are similar or not
+    private IntList reprFragmentOfAxis = new IntArrayList();
+    private Integer i = 0;
+    private List<Date> currentStepDates = new ArrayList<>();
+    private List<Date> precedingStepDates = new ArrayList<>();
+
+    // Java-specific
+    DoubleList processedPoints = new DoubleArrayList();
+    IntList processedFlags = new IntArrayList();
+
+    public void startStepCounting() {
+        resetData();
+
+        // motionManager.deviceMotionUpdateInterval = updateInterval
+        // Start motion data and send data to main algo
     }
-    
-    func stopStepCounting() {
-        guard motionManager != nil else {
-            return
-        }
-        
-        motionManager.stopDeviceMotionUpdates()
+
+    public void stopStepCounting() {
+        // Stop motion data
     }
-    
-    private func resetData() {
+
+    private void resetData() {
         //First, reset motion data and information about maxima and minima
-        gravityData = [[], [], []]
-        gravityFlag = [[0], [0], [0]]
-        
+        gravityData = new ArrayList<>();
+        gravityFlag = new ArrayList<>();
+
         // Second, reset supplementary variables
-        representativeFragment = Fragment()
-        pastThreeExtremaX = [[], [], []]
-        pastThreeExtremaY = [[], [], []]
-        fragments = [[], [], []]
-        similarities = [[], [], []]
-        reprFragmentOfAxis = []
-        i = 0
-        currentStepDates = []
-        precedingStepDates = []
+        representativeFragment = new Fragment();
+        pastThreeExtremaX = new ArrayList<>();
+        pastThreeExtremaY = new ArrayList<>();
+        fragments = new ArrayList<>();
+        similarities = new ArrayList<>();
+        reprFragmentOfAxis = new IntArrayList();
+        i = 0;
+        currentStepDates = new ArrayList<>();
+        precedingStepDates = new ArrayList<>();
     }
-    
-    private func processMotionData(x: Double, y: Double, z: Double) {
+
+    private void processMotionData(double x, double y, double z) {
         // First, simply store the new incoming data points in the gravity and accelerometer array
-        self.gravityData[0].append(x)
-        self.gravityData[1].append(y)
-        self.gravityData[2].append(z)
-        
+        gravityData.get(0).add(x);
+        gravityData.get(1).add(y);
+        gravityData.get(2).add(z);
+
         // Second, calculate for each new incoming point whether it is an maximina (1), minima(-1), or none(0)
-        if i >= 2 {
-            for axis in 0...2 {
-                gravityFlag[axis].append(setMinimaMaxima(Array(gravityData[axis][i-2...i])))
+        if (i >= 2) {
+            for (int axis = 0; axis <= 2; axis++) {
+                gravityFlag.get(axis).add(setMinimaMaxima(gravityData.get(axis).subList(i-2, i)));
             }
         }
-        
+
         // The following part is solely for gravity
         // If we have enough data points to apply the smoothing algorithm ...
-        if i >= rT {
-            for axis in 0...2 {
+        if (i >= rT) {
+            for (int axis = 0; axis <= 2; axis++) {
                 // ... we apply the smoothing algorithm to this part for every axis
-                let result = smoothSubgraph(Array(gravityData[axis][i-rT...i-1]), Array(gravityFlag[axis][i-rT...i-1]))
-                gravityData[axis].replaceSubrange(i-rT...i-1, with: result.0)
-                gravityFlag[axis].replaceSubrange(i-rT...i-1, with: result.1)
-                
+                smoothSubgraph(gravityData.get(axis).subList(i-rT, i-1), gravityFlag.get(axis).subList(i-rT, i-1));
+                gravityData.get(axis).removeElements(i-rT, i-1);
+                gravityData.get(axis).addAll(i-rT-1, processedPoints);
+                gravityFlag.get(axis).removeElements(i-rT, i-1);
+                gravityFlag.get(axis).addAll(i-rT-1, processedFlags);
                 // Now we shift the point of consideration to the left, so that we only look at smoothed data -> (i-rT)
                 // If this smoothe point of consideration is a minima or maxima ...
-                if gravityFlag[axis][i-rT] != 0 {
+                if (gravityFlag.get(axis).getInt(i-rT)!= 0) {
                     // ... append it to the respective array
-                    pastThreeExtremaX[axis].append(i-rT)
-                    pastThreeExtremaY[axis].append(gravityData[axis][i-rT])
+                    pastThreeExtremaX.get(axis).add(i-rT);
+                    pastThreeExtremaY.get(axis).add(gravityData.get(axis).getDouble(i-rT);
                     // If we have gathered three maxima or minima, we can build our first fragment
-                    if pastThreeExtremaX[axis].count >= 3 {
-                        let fragment: Fragment = createFragment(pastThreeExtremaX[axis], pastThreeExtremaY[axis], gravityFlag[axis][i-rT], axis)
+                    if (pastThreeExtremaX.get(axis).size() >= 3 ) {
+                        Fragment fragment = createFragment(pastThreeExtremaX[axis], pastThreeExtremaY[axis], gravityFlag[axis][i-rT], axis)
                         fragments[axis].append(fragment)
                         pastThreeExtremaX[axis].removeFirst()
                         pastThreeExtremaY[axis].removeFirst()
@@ -149,56 +144,62 @@ class StepCounter {
                 reprFragmentOfAxis = [0, 1, 2]
             }
         }
-        
+
         i += 1
     }
-    
+
     // Based on three points, this method returns whether the point in the middle is a maxima (1), a minima(-1), or none (0)
-    private func setMinimaMaxima(_ threePoints: [Double]) -> Int8 {
-        if (threePoints[0] < threePoints[1] && threePoints[2] <= threePoints[1]) {
-            return 1
-        } else if (threePoints[0] > threePoints[1] && threePoints[2] >= threePoints[1]) {
-            return -1
+    private int setMinimaMaxima(List<Double> threePoints)  {
+        if (threePoints.get(0) < threePoints.get(1) && threePoints.get(2) <= threePoints.get(1)) {
+            return 1;
+        } else if (threePoints.get(0) > threePoints.get(1) && threePoints.get(2) >= threePoints.get(1)) {
+            return -1;
         } else {
-            return 0
+            return 0;
         }
     }
-    
+
     // This function takes an array of datapoints (their y-values) and whether they are maxima, minima, or none to smooth the datapoints
     // Smoothing means that small distortions are removed while retaining the original height of maxima and minima
-    private func smoothSubgraph(_ dataPoints: [Double], _ flags: [Int8]) -> ([Double], [Int8]) {
-        var processedPoints = dataPoints
-        var processedFlags = flags
-        var foundExtreme: Bool = false
-        var firstExtremePos: Int = 0
-        
-        for i in 0...processedPoints.count-1 {
-            if foundExtreme && processedFlags[i] == processedFlags[firstExtremePos] {
-                processedPoints.replaceSubrange(firstExtremePos+1...i-1, with: Array(repeating: (processedPoints[firstExtremePos] + processedPoints[i])/2, count: i-firstExtremePos-1))
-                processedFlags.replaceSubrange(firstExtremePos+1...i-1, with: Array(repeating: Int8(0), count: i-firstExtremePos-1))
-                if processedFlags[i] == 1 {
-                    if processedPoints[firstExtremePos] > processedPoints[i] {
-                        processedFlags[i] = 0
+    private void smoothSubgraph(DoubleList points, IntList flags) {
+        processedPoints = new DoubleArrayList(points);
+        processedFlags = new IntArrayList(flags);
+        boolean foundExtreme = false;
+        int firstExtremePos = 0;
+
+        for (int i = 0; i <= processedPoints.size()-1; i++) {
+            if (foundExtreme && processedFlags.getInt(i) == processedFlags.getInt(firstExtremePos)) {
+                processedPoints.removeElements(firstExtremePos+1, i-1);
+                processedFlags.removeElements(firstExtremePos+1, i-1);
+                int lengthOfNewDataPoints = i-firstExtremePos-1;
+                double[] newDataPoints = new double[lengthOfNewDataPoints];
+                int[] newFlags = new int[lengthOfNewDataPoints];
+                Arrays.fill(newDataPoints, (processedPoints.getDouble(firstExtremePos) + processedPoints.getDouble(i))/2);
+                Arrays.fill(newFlags, 0);
+                processedPoints.addElements(firstExtremePos, newDataPoints, 0, lengthOfNewDataPoints);
+                processedFlags.addElements(firstExtremePos, newFlags, 0, lengthOfNewDataPoints);
+                if (processedFlags.getInt(i) == 1) {
+                    if (processedPoints.getDouble(firstExtremePos) > processedPoints.getDouble(i)) {
+                        processedFlags.set(i, 0);
                     } else {
-                        processedFlags[firstExtremePos] = 0
+                        processedFlags.set(firstExtremePos, 0);
                     }
                 } else {
-                    if processedPoints[firstExtremePos] > processedPoints[i] {
-                        processedFlags[firstExtremePos] = 0
+                    if (processedPoints.getDouble(firstExtremePos) > processedPoints.getDouble(i)) {
+                        processedFlags.set(firstExtremePos, 0);
                     } else {
-                        processedFlags[i] = 0
+                        processedFlags.set(i, 0);
                     }
                 }
-                return (processedPoints, processedFlags)
+                return;
             }
-            if !foundExtreme && processedFlags[i] != 0 {
-                foundExtreme = true
-                firstExtremePos = i
+            if (!foundExtreme && processedFlags.get(i) != 0) {
+                foundExtreme = true;
+                firstExtremePos = i;
             }
         }
-        return (processedPoints, processedFlags)
     }
-    
+
     // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
     private func createFragment(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Fragment {
         if maxOrMin == 1 {
@@ -207,39 +208,39 @@ class StepCounter {
             return Fragment(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MinMaxMin)
         }
     }
-    
+
     // Helper function to create a representative fragment that is composed of the average values of similar fragments
     private func createRepresentativeFragment(_ fragments: [Fragment]) -> Fragment {
         let axes: [Int] = fragments.map { $0.axis }
         guard !axes.contains(where: { $0 != axes.first! }) else {
             return Fragment()
         }
-        
+
         let fragmentTypes: [Fragment.orders] = fragments.map { $0.fragmentType }
         guard !fragmentTypes.contains(where: { $0 != fragmentTypes.first! }) else {
             return Fragment()
         }
-        
+
         let amplitudes: [Double] = fragments.map { $0.amplitude }
         let lengths: [Int] = fragments.map { $0.lengthTotal }
         let amplitudesMean: Double = amplitudes.reduce(0, +) / Double(amplitudes.count)
         let lengthsMean: Int = Int(round(Double(lengths.reduce(0, +)) / Double(lengths.count)))
-        
+
         return Fragment(amplitudesMean, lengthsMean, axes.first!, fragmentTypes.first!)
     }
-    
+
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
     // Function considers the time shift caused by the smoothing algorithm and considers the fact that one fragment represents two steps
     private func initializeStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
-        
+
         // Clear the stepDates array
         currentStepDates.removeAll()
-        
+
         // Subtract the time shift caused by the smoothing algorithm
         let rTInSeconds: Double = updateInterval*Double(rT);
         currentDate.addTimeInterval(-rTInSeconds)
-        
+
         // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         // Also, subtract one additional stepLengthInSeconds to compensate for the fact that the most recent stride does not belong to the steps in this method
         let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
@@ -249,16 +250,16 @@ class StepCounter {
             currentStepDates.append(currentDate)
         }
     }
-    
+
     // Helper function to add step dates to the stepDates array, similar to the initializeStepDates but for the most recent ones
     private func addStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
-        
+
         // Subtract the time shift caused by the smoothing algorithm and add the last found step right away
         let rTInSeconds: Double = updateInterval*Double(rT);
         currentDate.addTimeInterval(-rTInSeconds)
         currentStepDates.append(currentDate)
-        
+
         // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
         for _ in 0...numberOfSteps-2 {
@@ -266,40 +267,40 @@ class StepCounter {
             currentStepDates.append(currentDate)
         }
     }
-    
+
     // Compares two fragments and returns a boolean indicating whether they are similar or not
     private func areFragmentsSimilar(_ fragmentOne: Fragment, _ fragmentTwo: Fragment) -> Bool {
         let diffLength: Double = Double(abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal))/Double(fragmentOne.lengthTotal)
         let diffAmplitude: Double = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude
-        
+
         return (diffLength <= dL && diffAmplitude <= dA)
     }
-    
+
     // Simple function to return the total number of steps
     func getStepsTotal() -> Int {
         return precedingStepDates.count+currentStepDates.count
     }
-    
+
     // Returns all steps in a given timeframe
     func getStepsBetween(startDate: Date, endDate: Date) -> Int {
         let allStepDates: [Date] = precedingStepDates+currentStepDates
         let allStepDatesBetween: [Date] = allStepDates.filter { $0 >= startDate && $0 <= endDate }
-        
+
         return allStepDatesBetween.count
     }
-    
+
     // Returns the estimated number of steps per minute
     // Also, compensate for time shift caused by the smoothing algorithm by only considering steps in a window where smoothed data is available
     func getStepsPerMinute() -> Int {
         let rTInSeconds: Double = updateInterval*Double(rT);
         let startDate15Seconds: Date = Date().addingTimeInterval(-(rTInSeconds+15))
         let endDate15Seconds: Date = Date().addingTimeInterval(-(rTInSeconds))
-        
+
         return getStepsBetween(startDate: startDate15Seconds, endDate: endDate15Seconds)*4
     }
-    
-}
 
-protocol StepCounterDelegate {
-    func stepCountDidChange(manager: StepCounter, count: Int)
+    public interface StepCounterDelegate {
+        void stepCountDidChange(Integer count);
+    }
+
 }
