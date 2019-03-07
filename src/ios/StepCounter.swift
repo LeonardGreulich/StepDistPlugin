@@ -129,7 +129,7 @@ class StepCounter {
                     // After we have found a representative fragment we compare new incoming fragments of the same axis to it and possibly increase the counter
                     // If there is no similarity, we re-initialize the representative fragment and similarities to look for a new pattern
                     if reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType {
-                        if self.areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
+                        if areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
                             addStepDates(fragments[axis][fragments[axis].count-1], 2)
                             delegate.stepCountDidChange(manager: self, count: getStepsTotal())
                         } else {

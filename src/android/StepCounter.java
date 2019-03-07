@@ -41,8 +41,8 @@ public class StepCounter {
     private List<Date> precedingStepDates = new ArrayList<>();
 
     // Java-specific
-    DoubleList processedPoints = new DoubleArrayList();
-    IntList processedFlags = new IntArrayList();
+    private DoubleList processedPoints = new DoubleArrayList();
+    private IntList processedFlags = new IntArrayList();
 
     public void startStepCounting() {
         resetData();
@@ -61,15 +61,34 @@ public class StepCounter {
         gravityFlag = new ArrayList<>();
 
         // Second, reset supplementary variables
-        representativeFragment = new Fragment();
         pastThreeExtremaX = new ArrayList<>();
         pastThreeExtremaY = new ArrayList<>();
         fragments = new ArrayList<>();
-        similarities = new ArrayList<>();
+
+        // Fill two-dimensional lists with empty lists
+        for (int i = 0; i <= 2; i++) {
+            gravityData.add(new DoubleArrayList());
+            gravityFlag.add(new IntArrayList());
+            pastThreeExtremaX.add(new IntArrayList());
+            pastThreeExtremaY.add(new DoubleArrayList());
+            fragments.add(new ArrayList<>());
+        }
+
+        representativeFragment = new Fragment();
         reprFragmentOfAxis = new IntArrayList();
-        i = 0;
         currentStepDates = new ArrayList<>();
         precedingStepDates = new ArrayList<>();
+        i = 0;
+
+        clearSimilarities();
+    }
+
+    // Helper function to clear all similarities
+    private void clearSimilarities() {
+        similarities = new ArrayList<>();
+        similarities.add(new BooleanArrayList());
+        similarities.add(new BooleanArrayList());
+        similarities.add(new BooleanArrayList());
     }
 
     private void processMotionData(double x, double y, double z) {
@@ -100,7 +119,7 @@ public class StepCounter {
                 if (gravityFlag.get(axis).getInt(i-rT)!= 0) {
                     // ... append it to the respective array
                     pastThreeExtremaX.get(axis).add(i-rT);
-                    pastThreeExtremaY.get(axis).add(gravityData.get(axis).getDouble(i-rT);
+                    pastThreeExtremaY.get(axis).add(gravityData.get(axis).getDouble(i-rT));
                     // If we have gathered three maxima or minima, we can build our first fragment
                     if (pastThreeExtremaX.get(axis).size() >= 3 ) {
                         Fragment fragment = createFragment(pastThreeExtremaX.get(axis).toIntArray(), pastThreeExtremaY.get(axis).toDoubleArray(), gravityFlag.get(axis).getInt(i-rT), axis);
@@ -117,7 +136,7 @@ public class StepCounter {
                     if (!reprFragmentOfAxis.contains(axis) && similarities.get(axis).size() >= 5) {
                         if (similarities.get(axis).getBoolean(similarities.get(axis).size()-5) && similarities.get(axis).getBoolean(similarities.get(axis).size()-3) && similarities.get(axis).getBoolean(similarities.get(axis).size()-1)) {
                             if (fragments.get(axis).get(fragments.get(axis).size()-1).amplitude > representativeFragment.amplitude*bFF) {
-                                representativeFragment = createRepresentativeFragment(new Fragment[] {fragments.get(axis).get(fragments.get(axis).size()-5), fragments.get(axis).get(fragments.get(axis).size()-3, fragments.get(axis).get(fragments.get(axis).size()-1});
+                                representativeFragment = createRepresentativeFragment(new Fragment[] {fragments.get(axis).get(fragments.get(axis).size()-5), fragments.get(axis).get(fragments.get(axis).size()-3), fragments.get(axis).get(fragments.get(axis).size()-1)});
                                 reprFragmentOfAxis.add(axis);
                                 initializeStepDates(representativeFragment, 6);
                             }
@@ -125,16 +144,16 @@ public class StepCounter {
                     }
                     // After we have found a representative fragment we compare new incoming fragments of the same axis to it and possibly increase the counter
                     // If there is no similarity, we re-initialize the representative fragment and similarities to look for a new pattern
-                    if (reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType) {
-                        if self.areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
-                            addStepDates(fragments[axis][fragments[axis].count-1], 2)
-                            delegate.stepCountDidChange(manager: self, count: getStepsTotal())
+                    if (reprFragmentOfAxis.size() != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments.get(axis).get(fragments.get(axis).size()-1).fragmentType) {
+                        if (areFragmentsSimilar(representativeFragment, fragments.get(axis).get(fragments.get(axis).size()-1))) {
+                            addStepDates(fragments.get(axis).get(fragments.get(axis).size()-1), 2);
+                            delegate.stepCountDidChange(getStepsTotal());
                         } else {
-                            representativeFragment = Fragment()
-                            reprFragmentOfAxis = []
-                            similarities = [[], [], []]
-                            precedingStepDates.append(contentsOf: currentStepDates)
-                            currentStepDates.removeAll()
+                            representativeFragment = new Fragment();
+                            reprFragmentOfAxis.clear();
+                            clearSimilarities();
+                            precedingStepDates.addAll(new ArrayList<>(currentStepDates));
+                            currentStepDates.clear();
                         }
                     }
                 }
@@ -142,12 +161,14 @@ public class StepCounter {
             // If the phone moves slowly in the pocket it may happen that another axis fulfils the betterFragmentFactor at some time
             // To avoid that previous steps are overwritten, prevent that a better axis is found after 15 steps
             // If a fragment does not fit the representative fragment after a phone movement in the pocket, a new pattern is searched in all axes again in the code above
-            if currentStepDates.count >= 15 {
-                reprFragmentOfAxis = [0, 1, 2]
+            if (currentStepDates.size() >= 15) {
+                reprFragmentOfAxis.add(0);
+                reprFragmentOfAxis.add(1);
+                reprFragmentOfAxis.add(2);
             }
         }
 
-        i += 1
+        i++;
     }
 
     // Based on three points, this method returns whether the point in the middle is a maxima (1), a minima(-1), or none (0)
@@ -212,23 +233,13 @@ public class StepCounter {
     }
 
     // Helper function to create a representative fragment that is composed of the average values of similar fragments
-    private func createRepresentativeFragment(_ fragments: [Fragment]) -> Fragment {
-        let axes: [Int] = fragments.map { $0.axis }
-        guard !axes.contains(where: { $0 != axes.first! }) else {
-            return Fragment()
-        }
+    private Fragment createRepresentativeFragment(Fragment[] fragments) {
+        double amplitudeTotal = fragments[0].amplitude+fragments[1].amplitude+fragments[2].amplitude;
+        int lengthTotal = fragments[0].lengthTotal+fragments[1].lengthTotal+fragments[2].lengthTotal;
+        double amplitudesMean = amplitudeTotal/3;
+        int lengthsMean = (int) Math.round(lengthTotal/(double) 3);
 
-        let fragmentTypes: [Fragment.orders] = fragments.map { $0.fragmentType }
-        guard !fragmentTypes.contains(where: { $0 != fragmentTypes.first! }) else {
-            return Fragment()
-        }
-
-        let amplitudes: [Double] = fragments.map { $0.amplitude }
-        let lengths: [Int] = fragments.map { $0.lengthTotal }
-        let amplitudesMean: Double = amplitudes.reduce(0, +) / Double(amplitudes.count)
-        let lengthsMean: Int = Int(round(Double(lengths.reduce(0, +)) / Double(lengths.count)))
-
-        return Fragment(amplitudesMean, lengthsMean, axes.first!, fragmentTypes.first!)
+        return new Fragment(amplitudesMean, lengthsMean, fragments[0].axis, fragments[0].fragmentType);
     }
 
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
@@ -254,19 +265,19 @@ public class StepCounter {
     }
 
     // Helper function to add step dates to the stepDates array, similar to the initializeStepDates but for the most recent ones
-    private func addStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
-        var currentDate: Date = Date()
+    private void addStepDates(Fragment fragment, int numberOfSteps) {
+        Date currentDate = new Date();
 
         // Subtract the time shift caused by the smoothing algorithm and add the last found step right away
-        let rTInSeconds: Double = updateInterval*Double(rT);
-        currentDate.addTimeInterval(-rTInSeconds)
-        currentStepDates.append(currentDate)
+        double rTInSeconds = updateInterval* (double) rT;
+        currentDate.setTime(currentDate.getTime()-(long) rTInSeconds*1000);
+        currentStepDates.add(new Date(currentDate.getTime()));
 
         // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
-        let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
-        for _ in 0...numberOfSteps-2 {
-            currentDate.addTimeInterval(-stepLengthInSeconds)
-            currentStepDates.append(currentDate)
+        double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
+        for (int i=0; i <= numberOfSteps-1; i++) {
+            currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
+            currentStepDates.add(new Date(currentDate.getTime()));
         }
     }
 
@@ -279,30 +290,39 @@ public class StepCounter {
     }
 
     // Simple function to return the total number of steps
-    func getStepsTotal() -> Int {
-        return precedingStepDates.count+currentStepDates.count
+    public int getStepsTotal() {
+        return precedingStepDates.size()+currentStepDates.size();
     }
 
     // Returns all steps in a given timeframe
-    func getStepsBetween(startDate: Date, endDate: Date) -> Int {
-        let allStepDates: [Date] = precedingStepDates+currentStepDates
-        let allStepDatesBetween: [Date] = allStepDates.filter { $0 >= startDate && $0 <= endDate }
+    public int getStepsBetween(Date startDate,Date endDate) {
+        List<Date> allStepDates = new ArrayList<>(precedingStepDates);
+        allStepDates.addAll(currentStepDates);
 
-        return allStepDatesBetween.count
+        // As lambda expressions are not available in Android 7/Cordova
+        int stepsBetween = 0;
+        for (Date date : allStepDates) {
+            if (date.after(startDate) && date.before(endDate)) {
+                stepsBetween++;
+            }
+        }
+
+        return stepsBetween;
     }
 
     // Returns the estimated number of steps per minute
     // Also, compensate for time shift caused by the smoothing algorithm by only considering steps in a window where smoothed data is available
-    func getStepsPerMinute() -> Int {
-        let rTInSeconds: Double = updateInterval*Double(rT);
-        let startDate15Seconds: Date = Date().addingTimeInterval(-(rTInSeconds+15))
-        let endDate15Seconds: Date = Date().addingTimeInterval(-(rTInSeconds))
+    public int getStepsPerMinute() {
+        Date currentDate = new Date();
+        int rTInMilliseconds = updateInterval.intValue()*rT*1000;
+        Date startDate15Seconds = new Date(currentDate.getTime()-(rTInMilliseconds+15));
+        Date endDate15Seconds = new Date(currentDate.getTime()-(rTInMilliseconds));
 
-        return getStepsBetween(startDate: startDate15Seconds, endDate: endDate15Seconds)*4
+        return getStepsBetween(startDate15Seconds, endDate15Seconds)*4;
     }
 
     public interface StepCounterDelegate {
-        void stepCountDidChange(Integer count);
+        void stepCountDidChange(int count);
     }
 
 }
