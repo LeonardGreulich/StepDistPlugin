@@ -31,11 +31,12 @@ import java.util.concurrent.TimeUnit;
 import greulich.leonard.stepdist.MainActivity;
 import greulich.leonard.stepdist.R;
 
-public class DistanceService extends Service implements LocationListener {
+public class DistanceService extends Service implements LocationListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();
 
     private LocationManager locationManager;
+    private StepCounter stepCounter;
     private DistanceServiceDelegate delegate;
 
     private SensorsClient sensorsClient;
@@ -74,6 +75,9 @@ public class DistanceService extends Service implements LocationListener {
         }
 
         startForeground(1, notification);
+
+        stepCounter = new StepCounter(getApplicationContext());
+        stepCounter.startStepCounting();
 
         return mBinder;
     }
@@ -114,6 +118,11 @@ public class DistanceService extends Service implements LocationListener {
 
     public void setDelegate(DistanceServiceDelegate distanceServiceDelegate) {
         delegate = distanceServiceDelegate;
+    }
+
+    @Override
+    public void stepCountDidChange(int count) {
+        System.out.println(String.valueOf(count));
     }
 
     public class LocalBinder extends Binder {

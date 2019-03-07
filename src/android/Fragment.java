@@ -2,9 +2,9 @@ package cordova.plugin.stepdist;
 
 public class Fragment {
 
-enum orders {
-    MaxMinMax, MinMaxMin, none
-}
+    enum orders {
+        MaxMinMax, MinMaxMin, none
+    }
 
     Double heightMax;
     Double heightMin;

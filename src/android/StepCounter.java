@@ -1,5 +1,12 @@
 package cordova.plugin.stepdist;
 
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.Handler;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -14,9 +21,11 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import static java.lang.Math.abs;
 
-public class StepCounter {
+public class StepCounter implements SensorEventListener {
 
+    private SensorManager sensorManager;
     private StepCounterDelegate delegate;
+    private Handler handler;
 
     // Parameters
     private Double updateInterval = 0.1; // Sets how often new data from the motion sensors should be received
@@ -40,19 +49,35 @@ public class StepCounter {
     private List<Date> currentStepDates = new ArrayList<>();
     private List<Date> precedingStepDates = new ArrayList<>();
 
-    // Java-specific
+    // Java-specific (not on iOS implementation)
+    private double x;
+    private double y;
+    private double z;
     private DoubleList processedPoints = new DoubleArrayList();
     private IntList processedFlags = new IntArrayList();
 
-    public void startStepCounting() {
-        resetData();
-
-        // motionManager.deviceMotionUpdateInterval = updateInterval
-        // Start motion data and send data to main algo
+    public StepCounter(Context applicationContext) {
+        sensorManager = (SensorManager) applicationContext.getSystemService(Context.SENSOR_SERVICE);
+        handler = new Handler();
     }
 
+    public void startStepCounting() {
+        resetData();
+        assert sensorManager != null;
+        Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
+        handler.postDelayed(r, 100);
+    }
+
+    private Runnable r = new Runnable() {
+        public void run() {
+            processMotionData(x, y, z);
+            handler.postDelayed(this, 100);
+        }
+    };
+
     public void stopStepCounting() {
-        // Stop motion data
+
     }
 
     private void resetData() {
@@ -100,7 +125,7 @@ public class StepCounter {
         // Second, calculate for each new incoming point whether it is an maximina (1), minima(-1), or none(0)
         if (i >= 2) {
             for (int axis = 0; axis <= 2; axis++) {
-                gravityFlag.get(axis).add(setMinimaMaxima(gravityData.get(axis).subList(i-2, i)));
+                gravityFlag.get(axis).add(setMinimaMaxima(gravityData.get(axis).subList(i-2, i+1)));
             }
         }
 
@@ -109,11 +134,11 @@ public class StepCounter {
         if (i >= rT) {
             for (int axis = 0; axis <= 2; axis++) {
                 // ... we apply the smoothing algorithm to this part for every axis
-                smoothSubgraph(gravityData.get(axis).subList(i-rT, i-1), gravityFlag.get(axis).subList(i-rT, i-1));
+                smoothSubgraph(gravityData.get(axis).subList(i-rT, i), gravityFlag.get(axis).subList(i-rT, i));
                 gravityData.get(axis).removeElements(i-rT, i-1);
-                gravityData.get(axis).addAll(i-rT-1, processedPoints);
+                gravityData.get(axis).addAll(i-rT, processedPoints);
                 gravityFlag.get(axis).removeElements(i-rT, i-1);
-                gravityFlag.get(axis).addAll(i-rT-1, processedFlags);
+                gravityFlag.get(axis).addAll(i-rT, processedFlags);
                 // Now we shift the point of consideration to the left, so that we only look at smoothed data -> (i-rT)
                 // If this smoothe point of consideration is a minima or maxima ...
                 if (gravityFlag.get(axis).getInt(i-rT)!= 0) {
@@ -172,10 +197,10 @@ public class StepCounter {
     }
 
     // Based on three points, this method returns whether the point in the middle is a maxima (1), a minima(-1), or none (0)
-    private int setMinimaMaxima(List<Double> threePoints)  {
-        if (threePoints.get(0) < threePoints.get(1) && threePoints.get(2) <= threePoints.get(1)) {
+    private int setMinimaMaxima(DoubleList threePoints)  {
+        if (threePoints.getDouble(0) < threePoints.getDouble(1) && threePoints.getDouble(2) <= threePoints.getDouble(1)) {
             return 1;
-        } else if (threePoints.get(0) > threePoints.get(1) && threePoints.get(2) >= threePoints.get(1)) {
+        } else if (threePoints.getDouble(0) > threePoints.getDouble(1) && threePoints.getDouble(2) >= threePoints.getDouble(1)) {
             return -1;
         } else {
             return 0;
@@ -194,10 +219,10 @@ public class StepCounter {
             if (foundExtreme && processedFlags.getInt(i) == processedFlags.getInt(firstExtremePos)) {
                 processedPoints.removeElements(firstExtremePos+1, i-1);
                 processedFlags.removeElements(firstExtremePos+1, i-1);
-                int lengthOfNewDataPoints = i-firstExtremePos-1;
+                int lengthOfNewDataPoints = i-firstExtremePos;
                 double[] newDataPoints = new double[lengthOfNewDataPoints];
                 int[] newFlags = new int[lengthOfNewDataPoints];
-                Arrays.fill(newDataPoints, (processedPoints.getDouble(firstExtremePos) + processedPoints.getDouble(i))/2);
+                Arrays.fill(newDataPoints, (processedPoints.getDouble(firstExtremePos) + processedPoints.getDouble(i-1))/2);
                 Arrays.fill(newFlags, 0);
                 processedPoints.addElements(firstExtremePos, newDataPoints, 0, lengthOfNewDataPoints);
                 processedFlags.addElements(firstExtremePos, newFlags, 0, lengthOfNewDataPoints);
@@ -319,6 +344,18 @@ public class StepCounter {
         Date endDate15Seconds = new Date(currentDate.getTime()-(rTInMilliseconds));
 
         return getStepsBetween(startDate15Seconds, endDate15Seconds)*4;
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        x = event.values[0];
+        y = event.values[1];
+        z = event.values[2];
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
     }
 
     public interface StepCounterDelegate {
