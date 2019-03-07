@@ -12,6 +12,8 @@ import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 
+import static java.lang.Math.abs;
+
 public class StepCounter {
 
     private StepCounterDelegate delegate;
@@ -101,29 +103,29 @@ public class StepCounter {
                     pastThreeExtremaY.get(axis).add(gravityData.get(axis).getDouble(i-rT);
                     // If we have gathered three maxima or minima, we can build our first fragment
                     if (pastThreeExtremaX.get(axis).size() >= 3 ) {
-                        Fragment fragment = createFragment(pastThreeExtremaX[axis], pastThreeExtremaY[axis], gravityFlag[axis][i-rT], axis)
-                        fragments[axis].append(fragment)
-                        pastThreeExtremaX[axis].removeFirst()
-                        pastThreeExtremaY[axis].removeFirst()
+                        Fragment fragment = createFragment(pastThreeExtremaX.get(axis).toIntArray(), pastThreeExtremaY.get(axis).toDoubleArray(), gravityFlag.get(axis).getInt(i-rT), axis);
+                        fragments.get(axis).add(fragment);
+                        pastThreeExtremaX.get(axis).removeInt(0);
+                        pastThreeExtremaY.get(axis).removeDouble(0);
                     }
                     // Once we have collected three or more fragments, we can start to compare them (the last vs the third-last to compare the same type)
-                    if fragments[axis].count >= 3 {
-                        similarities[axis].append(areFragmentsSimilar(fragments[axis][fragments[axis].count-3], fragments[axis][fragments[axis].count-1]))
+                    if (fragments.get(axis).size() >= 3) {
+                        similarities.get(axis).add(areFragmentsSimilar(fragments.get(axis).get(fragments.get(axis).size()-3), fragments.get(axis).get(fragments.get(axis).size()-1)));
                     }
                     // Finally, if we have collected the results of 5 or more comparisons, we can check if there is a pattern and, perhaps, ...
                     // ... set the representative fragment (or change it if we find a better one)
-                    if !reprFragmentOfAxis.contains(axis) && similarities[axis].count >= 5 {
-                        if similarities[axis][similarities[axis].count-5] && similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
-                            if fragments[axis][fragments[axis].count-1].amplitude > representativeFragment.amplitude*bFF {
-                                representativeFragment = createRepresentativeFragment([fragments[axis][fragments[axis].count-5], fragments[axis][fragments[axis].count-3], fragments[axis][fragments[axis].count-1]])
-                                reprFragmentOfAxis.append(axis)
-                                initializeStepDates(representativeFragment, 6)
+                    if (!reprFragmentOfAxis.contains(axis) && similarities.get(axis).size() >= 5) {
+                        if (similarities.get(axis).getBoolean(similarities.get(axis).size()-5) && similarities.get(axis).getBoolean(similarities.get(axis).size()-3) && similarities.get(axis).getBoolean(similarities.get(axis).size()-1)) {
+                            if (fragments.get(axis).get(fragments.get(axis).size()-1).amplitude > representativeFragment.amplitude*bFF) {
+                                representativeFragment = createRepresentativeFragment(new Fragment[] {fragments.get(axis).get(fragments.get(axis).size()-5), fragments.get(axis).get(fragments.get(axis).size()-3, fragments.get(axis).get(fragments.get(axis).size()-1});
+                                reprFragmentOfAxis.add(axis);
+                                initializeStepDates(representativeFragment, 6);
                             }
                         }
                     }
                     // After we have found a representative fragment we compare new incoming fragments of the same axis to it and possibly increase the counter
                     // If there is no similarity, we re-initialize the representative fragment and similarities to look for a new pattern
-                    if reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType {
+                    if (reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType) {
                         if self.areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
                             addStepDates(fragments[axis][fragments[axis].count-1], 2)
                             delegate.stepCountDidChange(manager: self, count: getStepsTotal())
@@ -201,11 +203,11 @@ public class StepCounter {
     }
 
     // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
-    private func createFragment(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Fragment {
-        if maxOrMin == 1 {
-            return Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MaxMinMax)
+    private Fragment createFragment(int[] xValues, double[] yValues, int maxOrMin, int axis) {
+        if (maxOrMin == 1) {
+            return new Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Fragment.orders.MaxMinMax);
         } else {
-            return Fragment(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MinMaxMin)
+            return new Fragment(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Fragment.orders.MinMaxMin);
         }
     }
 
@@ -231,23 +233,23 @@ public class StepCounter {
 
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
     // Function considers the time shift caused by the smoothing algorithm and considers the fact that one fragment represents two steps
-    private func initializeStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
-        var currentDate: Date = Date()
+    private void initializeStepDates(Fragment fragment, int numberOfSteps) {
+        Date currentDate = new Date();
 
         // Clear the stepDates array
-        currentStepDates.removeAll()
+        currentStepDates.clear();
 
         // Subtract the time shift caused by the smoothing algorithm
-        let rTInSeconds: Double = updateInterval*Double(rT);
-        currentDate.addTimeInterval(-rTInSeconds)
+        double rTInSeconds = updateInterval* (double) rT;
+        currentDate.setTime(currentDate.getTime()-(long) rTInSeconds*1000);
 
         // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         // Also, subtract one additional stepLengthInSeconds to compensate for the fact that the most recent stride does not belong to the steps in this method
-        let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
-        currentDate.addTimeInterval(-stepLengthInSeconds)
-        for _ in 0...numberOfSteps-1 {
-            currentDate.addTimeInterval(-stepLengthInSeconds)
-            currentStepDates.append(currentDate)
+        double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
+        currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
+        for (int i=0; i <= numberOfSteps-1; i++) {
+            currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
+            currentStepDates.add(new Date(currentDate.getTime()));
         }
     }
 
@@ -269,11 +271,11 @@ public class StepCounter {
     }
 
     // Compares two fragments and returns a boolean indicating whether they are similar or not
-    private func areFragmentsSimilar(_ fragmentOne: Fragment, _ fragmentTwo: Fragment) -> Bool {
-        let diffLength: Double = Double(abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal))/Double(fragmentOne.lengthTotal)
-        let diffAmplitude: Double = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude
+    private boolean areFragmentsSimilar(Fragment fragmentOne, Fragment fragmentTwo) {
+        double diffLength = (double) abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal)/ (double) fragmentOne.lengthTotal;
+        double diffAmplitude = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude;
 
-        return (diffLength <= dL && diffAmplitude <= dA)
+        return (diffLength <= dL && diffAmplitude <= dA);
     }
 
     // Simple function to return the total number of steps
