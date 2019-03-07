@@ -220,21 +220,26 @@ import CoreMotion
     }
     
     func processLocationEvent(_ locationEvent: CLLocation) {
+        // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time
+        // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
+        if locationEvents.count >= 3 {
+            calibrationCandidateDistance = calculateCumulativeDistance(Array(locationEvents[1...locationEvents.count-1]))
+            if calibrationCandidateDistance >= locationsSequenceDistanceFilter {
+                calibrationInProgress = true
+                let calibrationCandidateSteps: Int = stepCounter.getStepsBetween(startDate: locationEvents.first!.timestamp, endDate: locationEvents.last!.timestamp)
+                saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
+                sendPluginInfo()
+            } else if calibrationInProgress {
+                // As a delegate, this class has the most recent step count data from the step counter
+                calibrationInProgress = false
+                stepsTakenPersistent += stepsTakenProvisional
+                distanceTraveledPersistent += Int(Double(stepsTakenProvisional)*stepLength)
+            }
+        }
+        
         if roundAccuracy(locationEvent.horizontalAccuracy) <= accuracyFilter {
             if locationLiesOnPath(locationEvent) {
                 locationEvents.append(locationEvent)
-                calibrationCandidateDistance = calculateCumulativeDistance()
-                if calibrationCandidateDistance >= locationsSequenceDistanceFilter {
-                    calibrationInProgress = true
-                    let calibrationCandidateSteps: Int = stepCounter.getStepsSince(locationEvents.first!.timestamp)
-                    saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
-                    sendPluginInfo()
-                } else if calibrationInProgress {
-                    // As a delegate, this class has the most recent step count data from the step counter
-                    calibrationInProgress = false
-                    stepsTakenPersistent = stepsTakenProvisional
-                    distanceTraveledPersistent = distanceTraveledProvisional
-                }
             } else {
                 locationEvents.removeAll()
                 calibrationCandidateDistance = 0.0
@@ -281,11 +286,11 @@ import CoreMotion
         return dist <= perpendicularDistanceFilter
     }
     
-    func calculateCumulativeDistance() -> Double {
+    func calculateCumulativeDistance(_ locations: [CLLocation]) -> Double {
         var lastLocation: CLLocation!
         var cumulativeDistance: Double = 0.0
         
-        for location: CLLocation in locationEvents {
+        for location: CLLocation in locations {
             if lastLocation != nil {
                 cumulativeDistance += location.distance(from: lastLocation)
             }

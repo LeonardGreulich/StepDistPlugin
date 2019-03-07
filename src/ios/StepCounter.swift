@@ -16,10 +16,10 @@ class StepCounter {
     
     // Parameters
     private let updateInterval: Double = 0.1 // Sets how often new data from the motion sensors should be received
-    private let bFF: Double = 1.2 // Better fragment factor, when a newer fragment is regarded better
+    private let bFF: Double = 1.3 // Better fragment factor, when a newer fragment is regarded better
     private let dL: Double = 0.3 // Deviation length, allowed deviation in length to regard fragments as similar
     private let dA: Double = 0.3 // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
-    private let rT: Int = 10 // Smoothing timeframe
+    private let rT: Int = 8 // Smoothing timeframe
     
     // Raw gravity data and information about maxima and minima
     private var gravityData: [[Double]] = [[], [], []] // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
@@ -117,7 +117,7 @@ class StepCounter {
                     }
                     // Finally, if we have collected the results of 5 or more comparisons, we can check if there is a pattern and, perhaps, ...
                     // ... set the representative fragment (or change it if we find a better one)
-                    if similarities[axis].count >= 5 && !reprFragmentOfAxis.contains(axis) {
+                    if !reprFragmentOfAxis.contains(axis) && similarities[axis].count >= 5 {
                         if similarities[axis][similarities[axis].count-5] && similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
                             if fragments[axis][fragments[axis].count-1].amplitude > representativeFragment.amplitude*bFF {
                                 representativeFragment = createRepresentativeFragment([fragments[axis][fragments[axis].count-5], fragments[axis][fragments[axis].count-3], fragments[axis][fragments[axis].count-1]])
@@ -137,9 +137,13 @@ class StepCounter {
                             reprFragmentOfAxis = []
                             similarities = [[], [], []]
                             precedingStepDates.append(contentsOf: currentStepDates)
+                            currentStepDates.removeAll()
                         }
                     }
                 }
+            }
+            if currentStepDates.count >= Int(2*(1/updateInterval)) {
+                reprFragmentOfAxis = [0, 1, 2]
             }
         }
         
@@ -296,6 +300,14 @@ class StepCounter {
     // Returns the estimated number of steps per minute
     func getStepsPerMinute() -> Int {
         return getStepsSince(Date().addingTimeInterval(-15))*4
+    }
+    
+    // Returns all steps in a given timeframe
+    func getStepsBetween(startDate: Date, endDate: Date) -> Int {
+        let allStepDates: [Date] = precedingStepDates+currentStepDates
+        let allStepDatesBetween: [Date] = allStepDates.filter { $0 >= startDate && $0 <= endDate }
+        
+        return allStepDatesBetween.count
     }
     
 }
