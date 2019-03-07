@@ -1,10 +1,11 @@
 import CoreLocation
 import CoreMotion
 
-@objc(stepdistplugin) class stepdistplugin : CDVPlugin, CLLocationManagerDelegate {
+@objc(stepdistplugin) class stepdistplugin : CDVPlugin, CLLocationManagerDelegate, StepCounterDelegate {
     
     var locationManager: CLLocationManager!
     var pedometer: CMPedometer!
+    var stepCounter: StepCounter!
     
     var stepEvents: [CMPedometerData]!
     var locationEvents: [CLLocation]!
@@ -54,6 +55,11 @@ import CoreMotion
             pedometer = CMPedometer()
         }
         
+        if stepCounter == nil {
+            stepCounter = StepCounter()
+            stepCounter.delegate = self
+        }
+        
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = distanceFilter
@@ -92,17 +98,21 @@ import CoreMotion
         calibrationInProgress = false
         calibrationCandidateDistance = 0
         
-        pedometer.startUpdates(from: Date(), withHandler: { (data, error) in
-            if let pedometerData: CMPedometerData = data {
-                self.processStepEvent(pedometerData)
-            }
-        })
+        stepCounter.startStepCounting()
+        
+//        pedometer.startUpdates(from: Date(), withHandler: { (data, error) in
+//            if let pedometerData: CMPedometerData = data {
+//                self.processStepEvent(pedometerData)
+//            }
+//        })
     }
 
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {     
         distanceEventCallbackId = nil
         
-        pedometer.stopUpdates()
+        stepCounter.stopStepCounting()
+        
+//        pedometer.stopUpdates()
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -147,6 +157,22 @@ import CoreMotion
         self.commandDelegate!.send(
             pluginResult,
             callbackId: pluginInfoEventCallbackId
+        )
+    }
+    
+    func stepCountDidChange(manager: StepCounter, count: Int) {
+        stepsTakenProvisional = count-stepsTakenPersistent
+        distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
+        
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK,
+            messageAs: ["distanceTraveled": distanceTraveledProvisional + distanceTraveledPersistent, "stepsTaken": stepsTakenProvisional + stepsTakenPersistent]
+        )
+        pluginResult?.setKeepCallbackAs(true)
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: distanceEventCallbackId
         )
     }
     
@@ -196,14 +222,24 @@ import CoreMotion
     func processLocationEvent(_ locationEvent: CLLocation) {
         if roundAccuracy(locationEvent.horizontalAccuracy) <= accuracyFilter {
             if locationLiesOnPath(locationEvent) {
+                locationEvents.append(locationEvent)
                 calibrationCandidateDistance = calculateCumulativeDistance()
+                if calibrationCandidateDistance >= locationsSequenceDistanceFilter {
+                    calibrationInProgress = true
+                    let calibrationCandidateSteps: Int = stepCounter.getStepsSince(locationEvents.first!.timestamp)
+                    saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
+                    sendPluginInfo()
+                } else if calibrationInProgress {
+                    // As a delegate, this class has the most recent step count data from the step counter
+                    calibrationInProgress = false
+                    stepsTakenPersistent = stepsTakenProvisional
+                    distanceTraveledPersistent = distanceTraveledProvisional
+                }
             } else {
                 locationEvents.removeAll()
                 calibrationCandidateDistance = 0.0
                 sendPluginInfo(debugInfo: "Calibr. cancel.: Path deviation");
             }
-            
-            locationEvents.append(locationEvent)
         } else {
             locationEvents.removeAll()
             calibrationCandidateDistance = 0.0

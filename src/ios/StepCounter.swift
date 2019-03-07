@@ -12,6 +12,7 @@ import CoreMotion
 class StepCounter {
     
     var motionManager: CMMotionManager!
+    var delegate: StepCounterDelegate!
     
     // Parameters
     private let updateInterval: Double = 0.1 // Sets how often new data from the motion sensors should be received
@@ -58,7 +59,7 @@ class StepCounter {
         motionManager.stopDeviceMotionUpdates()
     }
     
-    func resetData() {
+    private func resetData() {
         //First, reset motion data and information about maxima and minima
         gravityData = [[], [], []]
         gravityFlag = [[0], [0], [0]]
@@ -75,7 +76,7 @@ class StepCounter {
         precedingStepDates = []
     }
     
-    func processMotionDataGrav(x: Double, y: Double, z: Double) {
+    private func processMotionDataGrav(x: Double, y: Double, z: Double) {
         // First, simply store the new incoming data points in the gravity and accelerometer array
         self.gravityData[0].append(x)
         self.gravityData[1].append(y)
@@ -130,6 +131,7 @@ class StepCounter {
                     if reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType {
                         if self.areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
                             addStepDates(fragments[axis][fragments[axis].count-1], 2)
+                            delegate.stepCountDidChange(manager: self, count: getStepsTotal())
                         } else {
                             representativeFragment = Fragment()
                             reprFragmentOfAxis = []
@@ -145,7 +147,7 @@ class StepCounter {
     }
     
     // Based on three points, this method returns whether the point in the middle is a maxima (1), a minima(-1), or none (0)
-    func setMinimaMaxima(_ threePoints: [Double]) -> Int8 {
+    private func setMinimaMaxima(_ threePoints: [Double]) -> Int8 {
         if (threePoints[0] < threePoints[1] && threePoints[2] <= threePoints[1]) {
             return 1
         } else if (threePoints[0] > threePoints[1] && threePoints[2] >= threePoints[1]) {
@@ -157,7 +159,7 @@ class StepCounter {
     
     // This function takes an array of datapoints (their y-values) and whether they are maxima, minima, or none to smooth the datapoints
     // Smoothing means that small distortions are removed while retaining the original height of maxima and minima
-    func smoothSubgraph(_ dataPoints: [Double], _ flags: [Int8]) -> ([Double], [Int8]) {
+    private func smoothSubgraph(_ dataPoints: [Double], _ flags: [Int8]) -> ([Double], [Int8]) {
         var processedPoints = dataPoints
         var processedFlags = flags
         var foundExtreme: Bool = false
@@ -191,7 +193,7 @@ class StepCounter {
     }
     
     // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
-    func createFragment(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Fragment {
+    private func createFragment(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Fragment {
         if maxOrMin == 1 {
             return Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MaxMinMax)
         } else {
@@ -200,7 +202,7 @@ class StepCounter {
     }
     
     // Helper function to create a representative fragment that is composed of the average values of similar fragments
-    func createRepresentativeFragment(_ fragments: [Fragment]) -> Fragment {
+    private func createRepresentativeFragment(_ fragments: [Fragment]) -> Fragment {
         let axes: [Int] = fragments.map { $0.axis }
         guard !axes.contains(where: { $0 != axes.first! }) else {
             return Fragment()
@@ -221,7 +223,7 @@ class StepCounter {
     
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
     // Function considers the time shift caused by the smoothing algorithm and considers the fact that one fragment represents two steps
-    func initializeStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
+    private func initializeStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
         
         // Clear the stepDates array
@@ -242,7 +244,7 @@ class StepCounter {
     }
     
     // Helper function to add step dates to the stepDates array, similar to the initializeStepDates but for the most recent ones
-    func addStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
+    private func addStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
         
         // Subtract the time shift caused by the smoothing algorithm and add the last found step right away
@@ -259,7 +261,7 @@ class StepCounter {
     }
     
     // Compares two fragments and returns a boolean indicating whether they are similar or not
-    func areFragmentsSimilar(_ fragmentOne: Fragment, _ fragmentTwo: Fragment) -> Bool {
+    private func areFragmentsSimilar(_ fragmentOne: Fragment, _ fragmentTwo: Fragment) -> Bool {
         let diffLength: Double = Double(abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal))/Double(fragmentOne.lengthTotal)
         let diffAmplitude: Double = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude
         
@@ -273,7 +275,7 @@ class StepCounter {
     
     // Returns all steps after a given date
     // Also, compensate for time shift caused by the smoothing algorithm by adding one stride (= 2 steps) if the last step is between one or two times the smoothing timeframe ago
-    func getStepsAfter(_ date: Date) -> Int {
+    func getStepsSince(_ date: Date) -> Int {
         let allStepDates: [Date] = precedingStepDates+currentStepDates
         let allStepDatesAfter: [Date] = allStepDates.filter { $0 >= date }
         
@@ -293,7 +295,11 @@ class StepCounter {
     
     // Returns the estimated number of steps per minute
     func getStepsPerMinute() -> Int {
-        return getStepsAfter(Date().addingTimeInterval(-15))*4
+        return getStepsSince(Date().addingTimeInterval(-15))*4
     }
     
+}
+
+protocol StepCounterDelegate {
+    func stepCountDidChange(manager: StepCounter, count: Int)
 }
