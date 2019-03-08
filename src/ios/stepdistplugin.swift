@@ -4,21 +4,17 @@ import CoreMotion
 @objc(stepdistplugin) class stepdistplugin : CDVPlugin, CLLocationManagerDelegate, StepCounterDelegate {
     
     var locationManager: CLLocationManager!
-    var pedometer: CMPedometer!
     var stepCounter: StepCounter!
     
-    var stepEvents: [CMPedometerData]!
     var locationEvents: [CLLocation]!
     
     var pluginInfoEventCallbackId: String!
     var distanceEventCallbackId: String!
-
+    
     var distanceFilter: Double!
     var accuracyFilter: Double!
-    var perpendicularDistanceFilter: Double!
     var locationsSequenceDistanceFilter: Double!
-    var locationsSequenceFilter: Int!
-
+    
     var stepLength: Double!
     var calibrationCandidateDistance: Double!
     var distanceTraveledPersistent: Int!
@@ -37,13 +33,9 @@ import CoreMotion
         
         if let distanceFilter = arguments["distanceFilter"] as? Double,
         let accuracyFilter = arguments["accuracyFilter"] as? Double,
-        let perpendicularDistanceFilter = arguments["perpendicularDistanceFilter"] as? Double,
-        let locationsSequenceFilter = arguments["locationsSequenceFilter"] as? Int,
         let locationsSequenceDistanceFilter = arguments["locationsSequenceDistanceFilter"] as? Double {
             self.distanceFilter = distanceFilter
             self.accuracyFilter = accuracyFilter
-            self.perpendicularDistanceFilter = perpendicularDistanceFilter
-            self.locationsSequenceFilter = locationsSequenceFilter
             self.locationsSequenceDistanceFilter = locationsSequenceDistanceFilter
         } else {
             return
@@ -51,10 +43,6 @@ import CoreMotion
     
         if locationManager == nil {
             locationManager = CLLocationManager()
-        }
-        
-        if pedometer == nil {
-            pedometer = CMPedometer()
         }
         
         if stepCounter == nil {
@@ -92,7 +80,6 @@ import CoreMotion
         distanceEventCallbackId = command.callbackId
         
         locationEvents = []
-        stepEvents = []
         distanceTraveledPersistent = 0
         distanceTraveledProvisional = 0
         stepsTakenPersistent = 0
@@ -101,20 +88,12 @@ import CoreMotion
         calibrationCandidateDistance = 0
         
         stepCounter.startStepCounting()
-        
-//        pedometer.startUpdates(from: Date(), withHandler: { (data, error) in
-//            if let pedometerData: CMPedometerData = data {
-//                self.processStepEvent(pedometerData)
-//            }
-//        })
     }
 
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {     
         distanceEventCallbackId = nil
         
         stepCounter.stopStepCounting()
-        
-//        pedometer.stopUpdates()
         
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -178,49 +157,6 @@ import CoreMotion
         )
     }
     
-    func processStepEvent(_ stepEvent: CMPedometerData) {
-        stepEvents.append(stepEvent)
-        
-        if calibrationCandidateDistance >= locationsSequenceDistanceFilter {
-            calibrationInProgress = true
-            let calibrationCandidateSteps: Int = countStepsAfter(locationEvents.first!.timestamp)
-            saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
-            sendPluginInfo()
-        } else if calibrationInProgress {
-            calibrationInProgress = false
-            stepsTakenPersistent = stepsTakenProvisional
-            distanceTraveledPersistent = distanceTraveledProvisional
-            stepEvents = [stepEvent]
-        }
-        
-        stepsTakenProvisional = stepEvents.last!.numberOfSteps.intValue - stepsTakenPersistent
-        distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
-        
-        let pluginResult = CDVPluginResult(
-            status: CDVCommandStatus_OK,
-            messageAs: ["distanceTraveled": distanceTraveledProvisional + distanceTraveledPersistent, "stepsTaken": stepsTakenProvisional + stepsTakenPersistent]
-        )
-        pluginResult?.setKeepCallbackAs(true)
-        
-        self.commandDelegate!.send(
-            pluginResult,
-            callbackId: distanceEventCallbackId
-        )
-    }
-    
-    func countStepsAfter(_ date: Date) -> Int {
-        var stepsAfterDate: Int = 0
-        
-        let stepEventsBeforeDate: [CMPedometerData] = stepEvents.filter { $0.endDate < date }
-        if let lastStepEventBeforeDate: CMPedometerData = stepEventsBeforeDate.last {
-            stepsAfterDate = stepEvents.last!.numberOfSteps.intValue - lastStepEventBeforeDate.numberOfSteps.intValue
-        } else {
-            stepsAfterDate = stepEvents.last!.numberOfSteps.intValue
-        }
-        
-        return stepsAfterDate
-    }
-    
     func processLocationEvent(_ locationEvent: CLLocation) {
         // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time
         // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
@@ -240,52 +176,12 @@ import CoreMotion
         }
         
         if roundAccuracy(locationEvent.horizontalAccuracy) <= accuracyFilter {
-            if locationLiesOnPath(locationEvent) {
-                locationEvents.append(locationEvent)
-            } else {
-                locationEvents.removeAll()
-                calibrationCandidateDistance = 0.0
-                sendPluginInfo(debugInfo: "Calibr. cancel.: Path deviation");
-            }
+            locationEvents.append(locationEvent)
         } else {
             locationEvents.removeAll()
             calibrationCandidateDistance = 0.0
             sendPluginInfo(debugInfo: "Calibr. cancel.: Accuracy (\(roundAccuracy(locationEvent.horizontalAccuracy)))");
         }
-    }
-    
-    func locationLiesOnPath(_ location: CLLocation) -> Bool {
-        guard locationEvents.count >= 2 else {
-            return true
-        }
-        
-        var locations: [CLLocation] = locationEvents
-        if locationEvents.count >= locationsSequenceFilter {
-            locations = Array(locationEvents[locationEvents.count-locationsSequenceFilter...locationEvents.count-1])
-        }
-        
-        let latitudes: [Double] = locations.map { $0.coordinate.latitude }
-        let longitudes: [Double] = locations.map { $0.coordinate.longitude }
-        
-        let latitudesMean: Double = latitudes.reduce(0, +) / Double(latitudes.count)
-        let longitudesMean: Double = longitudes.reduce(0, +) / Double(longitudes.count)
-        
-        var covariance: Double = 0.0
-        for i in 0...latitudes.count-1  {
-            covariance += (longitudes[i]-longitudesMean)*(latitudes[i]-latitudesMean)
-        }
-
-        let variance: Double = longitudes.reduce(0) {$0 + pow($1-longitudesMean, 2.0)}
-        
-        let b1: Double = covariance/variance
-        let b0: Double = latitudesMean-b1*longitudesMean
-        
-        let r: Double = (location.coordinate.longitude+location.coordinate.latitude*b1-b0*b1)/(pow(b1, 2.0)+1)
-        let longitude_perpendicular: Double = r
-        let latitude_perpendicular: Double = b0+b1*r
-        let dist:Double = sqrt(pow(location.coordinate.longitude-longitude_perpendicular, 2.0)+pow(location.coordinate.latitude-latitude_perpendicular, 2.0))
-        
-        return dist <= perpendicularDistanceFilter
     }
     
     func calculateCumulativeDistance(_ locations: [CLLocation]) -> Double {

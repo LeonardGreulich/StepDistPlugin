@@ -3,8 +3,6 @@ var exec = require('cordova/exec');
 
 var distanceFilter = 3;
 var accuracyFilter = 8;
-var perpendicularDistanceFilter = 0.00003;
-var locationsSequenceFilter = 8;
 var locationsSequenceDistanceFilter = 30;
 
 var Stepdistplugin = function() {
@@ -52,8 +50,6 @@ var startLocalization = function() {
     var options = {
         distanceFilter: distanceFilter,
         accuracyFilter: accuracyFilter,
-        perpendicularDistanceFilter: perpendicularDistanceFilter,
-        locationsSequenceFilter: locationsSequenceFilter,
         locationsSequenceDistanceFilter: locationsSequenceDistanceFilter
       };
       

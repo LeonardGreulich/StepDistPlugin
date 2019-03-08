@@ -14,24 +14,12 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.fitness.Fitness;
-import com.google.android.gms.fitness.SensorsClient;
-import com.google.android.gms.fitness.data.DataPoint;
-import com.google.android.gms.fitness.data.DataSource;
-import com.google.android.gms.fitness.data.DataType;
-import com.google.android.gms.fitness.data.Field;
-import com.google.android.gms.fitness.request.DataSourcesRequest;
-import com.google.android.gms.fitness.request.OnDataPointListener;
-import com.google.android.gms.fitness.request.SensorRequest;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import greulich.leonard.stepdist.MainActivity;
 import greulich.leonard.stepdist.R;
@@ -45,15 +33,10 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private SharedPreferences preferences;
     private DistanceServiceDelegate delegate;
 
-    private SensorsClient sensorsClient;
-    private OnDataPointListener stepCountListener;
-
     private List<Location> locationEvents;
 
     private int distanceFilter;
     private double accuracyFilter;
-    private double perpendicularFilter;
-    private int locationsSequenceFilter;
     private double locationsSequenceDistanceFilter;
 
     private float stepLength;
@@ -75,8 +58,6 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
         distanceFilter = intent.getIntExtra("distanceFilter", 0);
         accuracyFilter = intent.getDoubleExtra("accuracyFilter", 0);
-        perpendicularFilter = intent.getDoubleExtra("perpendicularFilter", 0);
-        locationsSequenceFilter = intent.getIntExtra("locationsSequenceFilter", 0);
         locationsSequenceDistanceFilter = intent.getDoubleExtra("locationsSequenceDistanceFilter", 0);
 
         Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
@@ -98,7 +79,6 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
         preferences = getSharedPreferences("sharedPreferences", Context.MODE_PRIVATE);
         isTracking = false;
-        saveStepLength(0.78f);
         loadStepLength();
 
         startForeground(1, notification);
@@ -251,70 +231,6 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     public void sendPluginInfo(float accuracy) {
         sendPluginInfo(accuracy, "");
-    }
-
-    private void identifyStepDataSourcesAndStartCounting() {
-        stepCountListener = new OnDataPointListener() {
-            boolean firstDataPoint = true;
-            int totalSteps = 0;
-
-            @Override
-            public void onDataPoint(DataPoint dataPoint) {
-                int steps = dataPoint.getValue(Field.FIELD_STEPS).asInt();
-                if ((firstDataPoint && steps >= 5) || steps < 0) {
-                    firstDataPoint = false;
-                    return;
-                } else {
-                    firstDataPoint = false;
-                }
-                totalSteps += steps;
-                sendPluginInfo("Steps: " + totalSteps);
-            }
-        };
-
-        sensorsClient = Fitness.getSensorsClient(this, GoogleSignIn.getLastSignedInAccount(this));
-
-        sensorsClient.findDataSources(
-                        new DataSourcesRequest.Builder()
-                                .setDataTypes(DataType.TYPE_STEP_COUNT_DELTA)
-                                .setDataSourceTypes(DataSource.TYPE_RAW, DataSource.TYPE_DERIVED)
-                                .build())
-                .addOnSuccessListener(
-                        dataSources -> {
-                            for (DataSource dataSource : dataSources) {
-                                startStepCounting(dataSource);
-                            }
-                        });
-    }
-
-    private void startStepCounting(DataSource dataSource) {
-        sensorsClient.add(new SensorRequest.Builder()
-                                .setDataType(dataSource.getDataType())
-                                .setDataSource(dataSource)
-                                .setSamplingRate(1, TimeUnit.SECONDS)
-                                .setTimeout(1, TimeUnit.HOURS)
-                                .build(), stepCountListener)
-                .addOnCompleteListener(
-                        task -> {
-                            if (task.isSuccessful()) {
-                                System.out.println("Listener registered!");
-                            } else {
-                                System.out.println("Listener not registered!");
-                            }
-                        });
-    }
-
-    private void stopStepCounting() {
-        assert sensorsClient != null;
-        sensorsClient.remove(stepCountListener)
-                .addOnCompleteListener(
-                        task -> {
-                            if (task.isSuccessful() && task.getResult()) {
-                                System.out.println("Listener was removed!");
-                            } else {
-                                System.out.println("Listener was not removed!");
-                            }
-                        });
     }
 
     private void loadStepLength() {
