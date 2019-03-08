@@ -89,7 +89,6 @@ class StepCounter {
             }
         }
         
-        // The following part is solely for gravity
         // If we have enough data points to apply the smoothing algorithm ...
         if i >= rT {
             for axis in 0...2 {

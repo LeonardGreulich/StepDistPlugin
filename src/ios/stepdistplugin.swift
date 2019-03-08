@@ -12,13 +12,15 @@ import CoreMotion
     
     var pluginInfoEventCallbackId: String!
     var distanceEventCallbackId: String!
+
     var distanceFilter: Double!
     var accuracyFilter: Double!
     var perpendicularDistanceFilter: Double!
     var locationsSequenceDistanceFilter: Double!
+    var locationsSequenceFilter: Int!
+
     var stepLength: Double!
     var calibrationCandidateDistance: Double!
-    var locationsSequenceFilter: Int!
     var distanceTraveledPersistent: Int!
     var distanceTraveledProvisional: Int!
     var stepsTakenPersistent: Int!

@@ -26,6 +26,9 @@ import com.google.android.gms.fitness.request.SensorRequest;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import greulich.leonard.stepdist.MainActivity;
@@ -42,11 +45,25 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private SensorsClient sensorsClient;
     private OnDataPointListener stepCountListener;
 
-    private Integer distanceFilter;
-    private Double accuracyFilter;
-    private Double perpendicularFilter;
-    private Integer locationsSequenceFilter;
-    private Double locationsSequenceDistanceFilter;
+    private List<Location> locationEvents;
+
+    private int distanceFilter;
+    private double accuracyFilter;
+    private double perpendicularFilter;
+    private int locationsSequenceFilter;
+    private double locationsSequenceDistanceFilter;
+
+    private double stepLength;
+    private double calibrationCandidateDistance;
+    private int distanceTraveledPersistent;
+    private int distanceTraveledProvisional;
+    private int stepsTakenPersistent;
+    private int stepsTakenProvisional;
+    private int lastCalibrated;
+    private boolean calibrationInProgress;
+
+    // Android specific (not on iOS implementation)
+    private boolean isTracking;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -67,6 +84,8 @@ public class DistanceService extends Service implements LocationListener, StepCo
                 .build();
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        stepCounter = new StepCounter(getApplicationContext());
+        stepCounter.setDelegate(this);
 
         try {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, distanceFilter, this);
@@ -74,10 +93,10 @@ public class DistanceService extends Service implements LocationListener, StepCo
             securityException.printStackTrace();
         }
 
-        startForeground(1, notification);
+        isTracking = false;
+        loadStepLength();
 
-        stepCounter = new StepCounter(getApplicationContext());
-        stepCounter.startStepCounting();
+        startForeground(1, notification);
 
         return mBinder;
     }
@@ -89,16 +108,32 @@ public class DistanceService extends Service implements LocationListener, StepCo
     }
 
     public void startMeasuringDistance() {
-        identifyStepDataSourcesAndStartCounting();
+        locationEvents = new ArrayList<>();
+        distanceTraveledPersistent = 0;
+        distanceTraveledProvisional = 0;
+        stepsTakenPersistent = 0;
+        stepsTakenProvisional = 0;
+        calibrationInProgress = false;
+        calibrationCandidateDistance = 0;
+
+        stepCounter.startStepCounting();
+
+        isTracking = true;
     }
 
     public void stopMeasuringDistance() {
-        stopStepCounting();
+        stepCounter.stopStepCounting();
+
+        isTracking = false;
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        // sendPluginInfo("Accuracy: " + String.valueOf(location.getAccuracy()));
+        sendPluginInfo(location.getAccuracy());
+
+        if (isTracking) {
+            processLocationEvent(location);
+        }
     }
 
     @Override
@@ -122,7 +157,56 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     @Override
     public void stepCountDidChange(int count) {
-        System.out.println(String.valueOf(count));
+        stepsTakenProvisional = count-stepsTakenPersistent;
+        distanceTraveledProvisional = (int) Math.round(stepsTakenProvisional*stepLength);
+
+        JSONObject distanceInfo = new JSONObject();
+        try {
+            distanceInfo.put("distanceTraveled", distanceTraveledProvisional + distanceTraveledPersistent);
+            distanceInfo.put("stepsTaken", stepsTakenProvisional + stepsTakenPersistent);
+        } catch (JSONException e) {
+            System.out.println("Error distanceInfo");
+        }
+
+        delegate.updateDistanceInfo(distanceInfo);
+    }
+
+    private void processLocationEvent(Location location) {
+        if (locationEvents.size() >= 3) {
+            calibrationCandidateDistance = calculateCumulativeDistance(locationEvents.subList(1, locationEvents.size()));
+            if (calibrationCandidateDistance >= locationsSequenceDistanceFilter) {
+                calibrationInProgress = true;
+                int calibrationCandidateSteps = stepCounter.getStepsBetween(new Date(locationEvents.get(0).getTime()), new Date(locationEvents.get(locationEvents.size()-1).getTime()));
+                saveStepLength(calibrationCandidateDistance/calibrationCandidateSteps);
+                sendPluginInfo();
+            } else if (calibrationInProgress) {
+                calibrationInProgress = false;
+                stepsTakenPersistent += stepsTakenProvisional;
+                distanceTraveledPersistent += stepsTakenProvisional*stepLength;
+            }
+        }
+
+        if (location.getAccuracy() <= accuracyFilter) {
+            locationEvents.add(location);
+        } else {
+            locationEvents.clear();
+            calibrationCandidateDistance = 0.0;
+            sendPluginInfo("Calibr. cancel.: Accuracy (" + String.valueOf(location.getAccuracy()) + ")");
+        }
+    }
+
+    private double calculateCumulativeDistance(List<Location> locations) {
+        Location lastLocation = null;
+        double cumulativeDistance = 0;
+
+        for (Location location : locations) {
+            if (lastLocation != null) {
+                cumulativeDistance += lastLocation.distanceTo(location);
+            }
+            lastLocation = location;
+        }
+
+        return cumulativeDistance;
     }
 
     public class LocalBinder extends Binder {
@@ -131,29 +215,36 @@ public class DistanceService extends Service implements LocationListener, StepCo
         }
     }
 
-    public void sendPluginInfo(Double Accuracy, String debugInfo) {
+    public void sendPluginInfo(float accuracy, String debugInfo) {
+        boolean isReadyToStart = false;
+
+        // No need to round accuracy on Android
+        if (accuracy <= accuracyFilter || stepLength != 0.0) {
+            isReadyToStart = true;
+        }
+
         JSONObject pluginInfo = new JSONObject();
         try {
-            pluginInfo.put("isReadyToStart", true);
+            pluginInfo.put("isReadyToStart", isReadyToStart);
             pluginInfo.put("debugInfo", debugInfo);
-            pluginInfo.put("stepLength", 0.78);
-            pluginInfo.put("lastCalibrated", 123456712);
+            pluginInfo.put("stepLength", stepLength);
+            pluginInfo.put("lastCalibrated", lastCalibrated);
         } catch (JSONException e) {
-            System.out.println("Error");
+            System.out.println("Error pluginInfo");
         }
 
         delegate.updatePluginInfo(pluginInfo);
     }
 
     public void sendPluginInfo() {
-        sendPluginInfo(9999.0, "");
+        sendPluginInfo(9999.0f, "");
     }
 
     public void sendPluginInfo(String debugInfo) {
-        sendPluginInfo(9999.0, debugInfo);
+        sendPluginInfo(9999.0f, debugInfo);
     }
 
-    public void sendPluginInfo(Double accuracy) {
+    public void sendPluginInfo(float accuracy) {
         sendPluginInfo(accuracy, "");
     }
 
@@ -219,6 +310,17 @@ public class DistanceService extends Service implements LocationListener, StepCo
                                 System.out.println("Listener was not removed!");
                             }
                         });
+    }
+
+    private void loadStepLength() {
+        // TODO: To be implemented
+        stepLength = 0.78;
+        lastCalibrated = 12341234;
+    }
+
+    private void saveStepLength(double stepLength) {
+        this.stepLength = stepLength;
+        this.lastCalibrated = (int) (new Date().getTime());
     }
 
     public interface DistanceServiceDelegate {

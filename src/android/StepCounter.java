@@ -94,6 +94,7 @@ public class StepCounter implements SensorEventListener {
         for (int i = 0; i <= 2; i++) {
             gravityData.add(new DoubleArrayList());
             gravityFlag.add(new IntArrayList());
+            gravityFlag.get(i).add(0);
             pastThreeExtremaX.add(new IntArrayList());
             pastThreeExtremaY.add(new DoubleArrayList());
             fragments.add(new ArrayList<>());
@@ -129,15 +130,14 @@ public class StepCounter implements SensorEventListener {
             }
         }
 
-        // The following part is solely for gravity
         // If we have enough data points to apply the smoothing algorithm ...
         if (i >= rT) {
             for (int axis = 0; axis <= 2; axis++) {
                 // ... we apply the smoothing algorithm to this part for every axis
                 smoothSubgraph(gravityData.get(axis).subList(i-rT, i), gravityFlag.get(axis).subList(i-rT, i));
-                gravityData.get(axis).removeElements(i-rT, i-1);
+                gravityData.get(axis).removeElements(i-rT, i);
                 gravityData.get(axis).addAll(i-rT, processedPoints);
-                gravityFlag.get(axis).removeElements(i-rT, i-1);
+                gravityFlag.get(axis).removeElements(i-rT, i);
                 gravityFlag.get(axis).addAll(i-rT, processedFlags);
                 // Now we shift the point of consideration to the left, so that we only look at smoothed data -> (i-rT)
                 // If this smoothe point of consideration is a minima or maxima ...
@@ -217,12 +217,12 @@ public class StepCounter implements SensorEventListener {
 
         for (int i = 0; i <= processedPoints.size()-1; i++) {
             if (foundExtreme && processedFlags.getInt(i) == processedFlags.getInt(firstExtremePos)) {
-                processedPoints.removeElements(firstExtremePos+1, i-1);
-                processedFlags.removeElements(firstExtremePos+1, i-1);
-                int lengthOfNewDataPoints = i-firstExtremePos;
+                processedPoints.removeElements(firstExtremePos+1, i);
+                processedFlags.removeElements(firstExtremePos+1, i);
+                int lengthOfNewDataPoints = i-firstExtremePos-1;
                 double[] newDataPoints = new double[lengthOfNewDataPoints];
                 int[] newFlags = new int[lengthOfNewDataPoints];
-                Arrays.fill(newDataPoints, (processedPoints.getDouble(firstExtremePos) + processedPoints.getDouble(i-1))/2);
+                Arrays.fill(newDataPoints, (points.getDouble(firstExtremePos) + points.getDouble(i))/2);
                 Arrays.fill(newFlags, 0);
                 processedPoints.addElements(firstExtremePos, newDataPoints, 0, lengthOfNewDataPoints);
                 processedFlags.addElements(firstExtremePos, newFlags, 0, lengthOfNewDataPoints);
@@ -241,7 +241,7 @@ public class StepCounter implements SensorEventListener {
                 }
                 return;
             }
-            if (!foundExtreme && processedFlags.get(i) != 0) {
+            if (!foundExtreme && processedFlags.getInt(i) != 0) {
                 foundExtreme = true;
                 firstExtremePos = i;
             }
@@ -283,7 +283,7 @@ public class StepCounter implements SensorEventListener {
         // Also, subtract one additional stepLengthInSeconds to compensate for the fact that the most recent stride does not belong to the steps in this method
         double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
         currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
-        for (int i=0; i <= numberOfSteps-1; i++) {
+        for (int i=0; i < numberOfSteps; i++) {
             currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
             currentStepDates.add(new Date(currentDate.getTime()));
         }
@@ -300,7 +300,7 @@ public class StepCounter implements SensorEventListener {
 
         // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
-        for (int i=0; i <= numberOfSteps-1; i++) {
+        for (int i=0; i < numberOfSteps-1; i++) {
             currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
             currentStepDates.add(new Date(currentDate.getTime()));
         }
@@ -312,6 +312,10 @@ public class StepCounter implements SensorEventListener {
         double diffAmplitude = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude;
 
         return (diffLength <= dL && diffAmplitude <= dA);
+    }
+
+    public void setDelegate(StepCounterDelegate delegate) {
+        this.delegate = delegate;
     }
 
     // Simple function to return the total number of steps
