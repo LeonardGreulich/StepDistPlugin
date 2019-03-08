@@ -3,7 +3,9 @@ package cordova.plugin.stepdist;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -40,6 +42,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     private LocationManager locationManager;
     private StepCounter stepCounter;
+    private SharedPreferences preferences;
     private DistanceServiceDelegate delegate;
 
     private SensorsClient sensorsClient;
@@ -53,13 +56,13 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private int locationsSequenceFilter;
     private double locationsSequenceDistanceFilter;
 
-    private double stepLength;
-    private double calibrationCandidateDistance;
+    private float stepLength;
+    private float calibrationCandidateDistance;
     private int distanceTraveledPersistent;
     private int distanceTraveledProvisional;
     private int stepsTakenPersistent;
     private int stepsTakenProvisional;
-    private int lastCalibrated;
+    private long lastCalibrated;
     private boolean calibrationInProgress;
 
     // Android specific (not on iOS implementation)
@@ -93,7 +96,9 @@ public class DistanceService extends Service implements LocationListener, StepCo
             securityException.printStackTrace();
         }
 
+        preferences = getSharedPreferences("sharedPreferences", Context.MODE_PRIVATE);
         isTracking = false;
+        saveStepLength(0.78f);
         loadStepLength();
 
         startForeground(1, notification);
@@ -158,7 +163,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
     @Override
     public void stepCountDidChange(int count) {
         stepsTakenProvisional = count-stepsTakenPersistent;
-        distanceTraveledProvisional = (int) Math.round(stepsTakenProvisional*stepLength);
+        distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
 
         JSONObject distanceInfo = new JSONObject();
         try {
@@ -190,14 +195,14 @@ public class DistanceService extends Service implements LocationListener, StepCo
             locationEvents.add(location);
         } else {
             locationEvents.clear();
-            calibrationCandidateDistance = 0.0;
+            calibrationCandidateDistance = 0;
             sendPluginInfo("Calibr. cancel.: Accuracy (" + String.valueOf(location.getAccuracy()) + ")");
         }
     }
 
-    private double calculateCumulativeDistance(List<Location> locations) {
+    private float calculateCumulativeDistance(List<Location> locations) {
         Location lastLocation = null;
-        double cumulativeDistance = 0;
+        float cumulativeDistance = 0;
 
         for (Location location : locations) {
             if (lastLocation != null) {
@@ -237,11 +242,11 @@ public class DistanceService extends Service implements LocationListener, StepCo
     }
 
     public void sendPluginInfo() {
-        sendPluginInfo(9999.0f, "");
+        sendPluginInfo(9999, "");
     }
 
     public void sendPluginInfo(String debugInfo) {
-        sendPluginInfo(9999.0f, debugInfo);
+        sendPluginInfo(9999, debugInfo);
     }
 
     public void sendPluginInfo(float accuracy) {
@@ -313,14 +318,18 @@ public class DistanceService extends Service implements LocationListener, StepCo
     }
 
     private void loadStepLength() {
-        // TODO: To be implemented
-        stepLength = 0.78;
-        lastCalibrated = 12341234;
+        stepLength = preferences.getFloat("stepLength", 0);
+        lastCalibrated = preferences.getLong("lastCalibrated", 0);
     }
 
-    private void saveStepLength(double stepLength) {
+    private void saveStepLength(float stepLength) {
         this.stepLength = stepLength;
-        this.lastCalibrated = (int) (new Date().getTime());
+        this.lastCalibrated = new Date().getTime()/1000;
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat("stepLength", stepLength);
+        editor.putLong("lastCalibrated", lastCalibrated);
+        editor.apply();
     }
 
     public interface DistanceServiceDelegate {
