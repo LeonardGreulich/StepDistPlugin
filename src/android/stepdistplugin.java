@@ -119,19 +119,37 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     }
 
     @Override
-    public void updatePluginInfo(JSONObject pluginInfo) {
-        PluginResult pluginInfoResult = new PluginResult(PluginResult.Status.OK, pluginInfo);
-        pluginInfoResult.setKeepCallback(true);
+    public void distanceDidChange(int distanceTraveled, int stepsTaken) {
+        JSONObject distanceInfo = new JSONObject();
+        try {
+            distanceInfo.put("distanceTraveled", distanceTraveled);
+            distanceInfo.put("stepsTaken", stepsTaken);
+        } catch (JSONException e) {
+            System.out.println("Error distanceInfo");
+        }
 
-        pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
-    }
-
-    @Override
-    public void updateDistanceInfo(JSONObject distanceInfo) {
         PluginResult distanceInfoResult = new PluginResult(PluginResult.Status.OK, distanceInfo);
         distanceInfoResult.setKeepCallback(true);
 
         distanceEventCallback.sendPluginResult(distanceInfoResult);
+    }
+
+    @Override
+    public void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength) {
+        JSONObject pluginInfo = new JSONObject();
+        try {
+            pluginInfo.put("isReadyToStart", isReadyToStart);
+            pluginInfo.put("debugInfo", debugInfo);
+            pluginInfo.put("stepLength", stepLength);
+            pluginInfo.put("lastCalibrated", lastCalibrated);
+        } catch (JSONException e) {
+            System.out.println("Error pluginInfo");
+        }
+
+        PluginResult pluginInfoResult = new PluginResult(PluginResult.Status.OK, pluginInfo);
+        pluginInfoResult.setKeepCallback(true);
+
+        pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
     }
 
     @Override

@@ -314,6 +314,7 @@ public class StepCounter implements SensorEventListener {
         return (diffLength <= dL && diffAmplitude <= dA);
     }
 
+    // Setter for the delegate, which is the DistanceService
     public void setDelegate(StepCounterDelegate delegate) {
         this.delegate = delegate;
     }

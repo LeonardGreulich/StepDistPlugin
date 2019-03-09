@@ -10,7 +10,7 @@ import CoreMotion
 
 class StepCounter {
     
-    var motionManager: CMMotionManager!
+    private var motionManager: CMMotionManager!
     var delegate: StepCounterDelegate!
     
     // Parameters

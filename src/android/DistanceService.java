@@ -14,9 +14,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -143,15 +140,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
         stepsTakenProvisional = count-stepsTakenPersistent;
         distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
 
-        JSONObject distanceInfo = new JSONObject();
-        try {
-            distanceInfo.put("distanceTraveled", distanceTraveledProvisional + distanceTraveledPersistent);
-            distanceInfo.put("stepsTaken", stepsTakenProvisional + stepsTakenPersistent);
-        } catch (JSONException e) {
-            System.out.println("Error distanceInfo");
-        }
-
-        delegate.updateDistanceInfo(distanceInfo);
+        delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional);
     }
 
     private void processLocationEvent(Location location) {
@@ -206,17 +195,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
             isReadyToStart = true;
         }
 
-        JSONObject pluginInfo = new JSONObject();
-        try {
-            pluginInfo.put("isReadyToStart", isReadyToStart);
-            pluginInfo.put("debugInfo", debugInfo);
-            pluginInfo.put("stepLength", stepLength);
-            pluginInfo.put("lastCalibrated", lastCalibrated);
-        } catch (JSONException e) {
-            System.out.println("Error pluginInfo");
-        }
-
-        delegate.updatePluginInfo(pluginInfo);
+        delegate.pluginInfoDidChange(isReadyToStart, debugInfo, lastCalibrated, stepLength);
     }
 
     public void sendPluginInfo() {
@@ -247,8 +226,8 @@ public class DistanceService extends Service implements LocationListener, StepCo
     }
 
     public interface DistanceServiceDelegate {
-        void updatePluginInfo(JSONObject pluginInfo);
-        void updateDistanceInfo(JSONObject distanceInfo);
+        void distanceDidChange(int distanceTraveled, int stepsTaken);
+        void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength);
     }
 
 }

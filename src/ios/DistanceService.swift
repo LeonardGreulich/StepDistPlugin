@@ -9,30 +9,30 @@ import CoreLocation
 
 class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate {
     
-    var locationManager: CLLocationManager!
-    var stepCounter: StepCounter!
+    private var locationManager: CLLocationManager!
+    private var stepCounter: StepCounter!
     var delegate: DistanceServiceDelegate!
     
-    var locationEvents: [CLLocation]!
+    private var locationEvents: [CLLocation]!
     
-    var distanceFilter: Double!
-    var accuracyFilter: Double!
-    var locationsSequenceDistanceFilter: Double!
+    private var distanceFilter: Double!
+    private var accuracyFilter: Double!
+    private var locationsSequenceDistanceFilter: Double!
     
-    var stepLength: Double!
-    var calibrationCandidateDistance: Double!
-    var distanceTraveledPersistent: Int!
-    var distanceTraveledProvisional: Int!
-    var stepsTakenPersistent: Int!
-    var stepsTakenProvisional: Int!
-    var lastCalibrated: Int!
-    var calibrationInProgress: Bool!
-    var isTracking: Bool!
+    private var stepLength: Double!
+    private var calibrationCandidateDistance: Double!
+    private var distanceTraveledPersistent: Int!
+    private var distanceTraveledProvisional: Int!
+    private var stepsTakenPersistent: Int!
+    private var stepsTakenProvisional: Int!
+    private var lastCalibrated: Int!
+    private var calibrationInProgress: Bool!
+    private var isTracking: Bool!
     
     init(_ options: [String: Any]) {
         if let distanceFilter = options["distanceFilter"] as? Double,
-            let accuracyFilter = options["accuracyFilter"] as? Double,
-            let locationsSequenceDistanceFilter = options["locationsSequenceDistanceFilter"] as? Double {
+        let accuracyFilter = options["accuracyFilter"] as? Double,
+        let locationsSequenceDistanceFilter = options["locationsSequenceDistanceFilter"] as? Double {
             self.distanceFilter = distanceFilter
             self.accuracyFilter = accuracyFilter
             self.locationsSequenceDistanceFilter = locationsSequenceDistanceFilter
@@ -68,8 +68,6 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     
     func stopLocalization() {
         locationManager.stopUpdatingLocation();
-        
-        locationManager = nil
     }
     
     func startMeasuringDistance() {
