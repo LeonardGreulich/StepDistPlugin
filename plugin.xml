@@ -27,6 +27,7 @@
             <string>Motion access for step counting.</string>
         </config-file>
 		<source-file src="src/ios/stepdistplugin.swift" />
+		<source-file src="src/ios/DistanceService.swift" />
 		<source-file src="src/ios/StepCounter.swift" />
 		<source-file src="src/ios/Fragment.swift" />
 	</platform>

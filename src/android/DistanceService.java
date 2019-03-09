@@ -47,8 +47,6 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private int stepsTakenProvisional;
     private long lastCalibrated;
     private boolean calibrationInProgress;
-
-    // Android specific (not on iOS implementation)
     private boolean isTracking;
 
     @Override

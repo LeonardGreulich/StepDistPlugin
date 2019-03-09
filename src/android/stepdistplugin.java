@@ -23,10 +23,12 @@ import org.json.JSONObject;
 
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
-    private Context applicationContext;
+    private DistanceService distanceService;
+
     private CallbackContext pluginInfoEventCallback;
     private CallbackContext distanceEventCallback;
-    private DistanceService distanceService;
+    
+    private Context applicationContext;
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override

@@ -1,6 +1,5 @@
 //
 //  Fragment.swift
-//  StepCounterTest
 //
 //  Created by Leo on 3/6/19.
 //  Copyright © 2019 Leonard Greulich. All rights reserved.

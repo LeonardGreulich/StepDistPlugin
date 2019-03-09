@@ -1,8 +1,7 @@
 //
-//  ViewController.swift
-//  StepCounterTest
+//  StepCounter.swift
 //
-//  Created by Leo on 2/16/19.
+//  Created by Leonard Greulich on 2/16/19.
 //  Copyright © 2019 Leonard Greulich. All rights reserved.
 //
 
