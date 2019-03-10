@@ -15,9 +15,11 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     
     private var locationEvents: [CLLocation]!
     
-    private var distanceFilter: Double!
-    private var accuracyFilter: Double!
-    private var locationsSequenceDistanceFilter: Double!
+    private var horizontalDistanceFilter: Double!
+    private var horizontalAccuracyFilter: Double!
+    private var verticalDistanceFilter: Double!
+    private var verticalAccuracyFilter: Double!
+    private var distanceTraveledToCalibrate: Double!
     
     private var stepLength: Double!
     private var calibrationCandidateDistance: Double!
@@ -30,12 +32,32 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var isTracking: Bool!
     
     init(_ options: [String: Any]) {
-        if let distanceFilter = options["distanceFilter"] as? Double,
-        let accuracyFilter = options["accuracyFilter"] as? Double,
-        let locationsSequenceDistanceFilter = options["locationsSequenceDistanceFilter"] as? Double {
-            self.distanceFilter = distanceFilter
-            self.accuracyFilter = accuracyFilter
-            self.locationsSequenceDistanceFilter = locationsSequenceDistanceFilter
+        var stepCounterOptions: [String : Any]!
+        
+        // Try to parse parameter options into variables
+        if let horizontalDistanceFilter = options["horizontalDistanceFilter"] as? Double,
+        let horizontalAccuracyFilter = options["horizontalAccuracyFilter"] as? Double,
+        let verticalDistanceFilter = options["verticalDistanceFilter"] as? Double,
+        let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
+        let distanceTraveledToCalibrate = options["distanceTraveledToCalibrate"] as? Double,
+        let updateInterval = options["updateInterval"] as? Double,
+        let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
+        let deviationLength = options["deviationLength"] as? Double,
+        let deviationAmplitude = options["deviationAmplitude"] as? Double,
+        let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
+            // Store location parameters
+            self.horizontalDistanceFilter = horizontalDistanceFilter
+            self.horizontalAccuracyFilter = horizontalAccuracyFilter
+            self.verticalDistanceFilter = verticalDistanceFilter
+            self.verticalAccuracyFilter = verticalAccuracyFilter
+            self.distanceTraveledToCalibrate = distanceTraveledToCalibrate
+
+            // Prepare dictionary with step counter parameters
+            stepCounterOptions = ["updateInterval": updateInterval,
+                                  "betterFragmentFactor": betterFragmentFactor,
+                                  "deviationLength": deviationLength,
+                                  "deviationAmplitude": deviationAmplitude,
+                                  "smoothingTimeframe": smoothingTimeframe]
         } else {
             return
         }
@@ -45,7 +67,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
         
         if stepCounter == nil {
-            stepCounter = StepCounter()
+            stepCounter = StepCounter(stepCounterOptions)
         }
     }
     
@@ -54,7 +76,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = distanceFilter
+        locationManager.distanceFilter = horizontalDistanceFilter
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
@@ -105,7 +127,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     func updatePluginInfo(accuracy: Double = 9999.0, debugInfo: String = "") {
         var isReadyToStart = false;
         
-        if roundAccuracy(accuracy) <= accuracyFilter || stepLength != 0.0 {
+        if roundAccuracy(accuracy) <= horizontalAccuracyFilter || stepLength != 0.0 {
             isReadyToStart = true;
         }
         
@@ -124,7 +146,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
         if locationEvents.count >= 3 {
             calibrationCandidateDistance = calculateCumulativeDistance(Array(locationEvents[1...locationEvents.count-1]))
-            if calibrationCandidateDistance >= locationsSequenceDistanceFilter {
+            if calibrationCandidateDistance >= distanceTraveledToCalibrate {
                 calibrationInProgress = true
                 let calibrationCandidateSteps: Int = stepCounter.getStepsBetween(startDate: locationEvents.first!.timestamp, endDate: locationEvents.last!.timestamp)
                 saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
@@ -137,7 +159,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             }
         }
         
-        if roundAccuracy(locationEvent.horizontalAccuracy) <= accuracyFilter {
+        if roundAccuracy(locationEvent.horizontalAccuracy) <= horizontalAccuracyFilter {
             locationEvents.append(locationEvent)
         } else {
             locationEvents.removeAll()

@@ -1,9 +1,19 @@
 var cordova = require('cordova');
 var exec = require('cordova/exec');
 
-var distanceFilter = 3;
-var accuracyFilter = 8;
-var locationsSequenceDistanceFilter = 30;
+// Parameters for location-based side of the algorithm
+var horizontalDistanceFilter = 2;
+var horizontalAccuracyFilter = 8;
+var verticalDistanceFilter = 5;
+var verticalAccuracyFilter = 10;
+var distanceTraveledToCalibrate = 40;
+
+// Parameters for step-counting-based side of the algorithm
+var updateInterval = 0.1;
+var betterFragmentFactor = 1.2;
+var deviationLength = 0.3;
+var deviationAmplitude = 0.3;
+var smoothingTimeframe = 8;
 
 var Stepdistplugin = function() {
     this.channels = {
@@ -48,9 +58,16 @@ var startLocalization = function() {
     console.log("Start localization");
 
     var options = {
-        distanceFilter: distanceFilter,
-        accuracyFilter: accuracyFilter,
-        locationsSequenceDistanceFilter: locationsSequenceDistanceFilter
+        horizontalDistanceFilter: horizontalDistanceFilter,
+        horizontalAccuracyFilter: horizontalAccuracyFilter,
+        verticalDistanceFilter: verticalDistanceFilter,
+        verticalAccuracyFilter: verticalAccuracyFilter,
+        distanceTraveledToCalibrate: distanceTraveledToCalibrate,
+        updateInterval: updateInterval,
+        betterFragmentFactor: betterFragmentFactor,
+        deviationLength: deviationLength,
+        deviationAmplitude: deviationAmplitude,
+        smoothingTimeframe: smoothingTimeframe
       };
       
     exec(pluginInfoEvent, error, "stepdistplugin", "startLocalization", [options])

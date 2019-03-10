@@ -7,6 +7,9 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -28,11 +31,11 @@ public class StepCounter implements SensorEventListener {
     private Handler handler;
 
     // Parameters
-    private Double updateInterval = 0.1; // Sets how often new data from the motion sensors should be received
-    private Double bFF = 1.3; // Better fragment factor, when a newer fragment is regarded better
-    private Double dL = 0.3; // Deviation length, allowed deviation in length to regard fragments as similar
-    private Double dA = 0.3; // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
-    private Integer rT = 8; // Smoothing timeframe
+    private Double updateInterval; // Sets how often new data from the motion sensors should be received
+    private Double bFF; // Better fragment factor, when a newer fragment is regarded better
+    private Double dL; // Deviation length, allowed deviation in length to regard fragments as similar
+    private Double dA; // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
+    private Integer rT; // Smoothing timeframe
 
     // Raw gravity data and information about maxima and minima
     private List<DoubleArrayList> gravityData = new ArrayList<>(); // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
@@ -56,9 +59,15 @@ public class StepCounter implements SensorEventListener {
     private DoubleList processedPoints = new DoubleArrayList();
     private IntList processedFlags = new IntArrayList();
 
-    public StepCounter(Context applicationContext) {
+    public StepCounter(Context applicationContext, JSONObject options) throws JSONException {
         sensorManager = (SensorManager) applicationContext.getSystemService(Context.SENSOR_SERVICE);
         handler = new Handler();
+
+        updateInterval = options.getDouble("updateInterval");
+        bFF = options.getDouble("betterFragmentFactor");
+        dL = options.getDouble("deviationLength");
+        dA = options.getDouble("deviationAmplitude");
+        rT = options.getInt("smoothingTimeframe");
     }
 
     public void startStepCounting() {
@@ -66,13 +75,13 @@ public class StepCounter implements SensorEventListener {
         assert sensorManager != null;
         Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
-        handler.postDelayed(r, 100);
+        handler.postDelayed(r, (long) (updateInterval*1000));
     }
 
     private Runnable r = new Runnable() {
         public void run() {
             processMotionData(x, y, z);
-            handler.postDelayed(this, 100);
+            handler.postDelayed(this, (long) (updateInterval*1000));
         }
     };
 

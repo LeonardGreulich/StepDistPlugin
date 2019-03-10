@@ -14,11 +14,11 @@ class StepCounter {
     var delegate: StepCounterDelegate!
     
     // Parameters
-    private let updateInterval: Double = 0.1 // Sets how often new data from the motion sensors should be received
-    private let bFF: Double = 1.3 // Better fragment factor, when a newer fragment is regarded better
-    private let dL: Double = 0.3 // Deviation length, allowed deviation in length to regard fragments as similar
-    private let dA: Double = 0.3 // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
-    private let rT: Int = 8 // Smoothing timeframe
+    private var updateInterval: Double! // Sets how often new data from the motion sensors should be received
+    private var bFF: Double! // Better fragment factor, when a newer fragment is regarded better
+    private var dL: Double! // Deviation length, allowed deviation in length to regard fragments as similar
+    private var dA: Double! // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
+    private var rT: Int! // Smoothing timeframe
     
     // Raw gravity data and information about maxima and minima
     private var gravityData: [[Double]] = [[], [], []] // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
@@ -34,6 +34,20 @@ class StepCounter {
     private var i: Int = 0 // Simple running index to performantly know how many data points has been stored and processed
     private var currentStepDates: [Date] = [] // Holds the date and time for each currently found step
     private var precedingStepDates: [Date] = [] // Holds the date and time for each previously found step
+    
+    init(_ options: [String: Any]) {
+        if let updateInterval = options["updateInterval"] as? Double,
+        let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
+        let deviationLength = options["deviationLength"] as? Double,
+        let deviationAmplitude = options["deviationAmplitude"] as? Double,
+        let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
+            self.updateInterval = updateInterval
+            self.bFF = betterFragmentFactor
+            self.dL = deviationLength
+            self.dA = deviationAmplitude
+            self.rT = smoothingTimeframe
+        }
+    }
     
     func startStepCounting() {
         resetData()

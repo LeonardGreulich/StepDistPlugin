@@ -15,12 +15,12 @@
     @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
         pluginInfoEventCallbackId = command.callbackId
         
-        guard let arguments = command.arguments.first as? [String: Any] else {
+        guard let options = command.arguments.first as? [String: Any] else {
             return
         }
         
         if distanceService == nil {
-            distanceService = DistanceService(arguments)
+            distanceService = DistanceService(options)
             distanceService.delegate = self
         }
         

@@ -14,6 +14,9 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -32,9 +35,11 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     private List<Location> locationEvents;
 
-    private int distanceFilter;
-    private double accuracyFilter;
-    private double locationsSequenceDistanceFilter;
+    private int horizontalDistanceFilter;
+    private double horizontalAccuracyFilter;
+    private int verticalDistanceFilter;
+    private double verticalAccuracyFilter;
+    private double distanceTraveledToCalibrate;
 
     private float stepLength;
     private float calibrationCandidateDistance;
@@ -51,9 +56,22 @@ public class DistanceService extends Service implements LocationListener, StepCo
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-        distanceFilter = intent.getIntExtra("distanceFilter", 0);
-        accuracyFilter = intent.getDoubleExtra("accuracyFilter", 0);
-        locationsSequenceDistanceFilter = intent.getDoubleExtra("locationsSequenceDistanceFilter", 0);
+        horizontalDistanceFilter = intent.getIntExtra("horizontalDistanceFilter", 0);
+        horizontalAccuracyFilter = intent.getDoubleExtra("horizontalAccuracyFilter", 0);
+        verticalDistanceFilter = intent.getIntExtra("verticalDistanceFilter", 0);
+        verticalAccuracyFilter = intent.getDoubleExtra("verticalAccuracyFilter", 0);
+        distanceTraveledToCalibrate = intent.getDoubleExtra("distanceTraveledToCalibrate", 0);
+
+        JSONObject stepCounterOptions = new JSONObject();
+        try {
+            stepCounterOptions.put("updateInterval", intent.getDoubleExtra("updateInterval", 0));
+            stepCounterOptions.put("betterFragmentFactor", intent.getDoubleExtra("betterFragmentFactor", 0));
+            stepCounterOptions.put("deviationLength", intent.getDoubleExtra("deviationLength", 0));
+            stepCounterOptions.put("deviationAmplitude", intent.getDoubleExtra("deviationAmplitude", 0));
+            stepCounterOptions.put("smoothingTimeframe", intent.getIntExtra("smoothingTimeframe", 0));
+        } catch (JSONException e) {
+            System.out.println("Error stepCounterOptions");
+        }
 
         Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
                 .setContentTitle("Distance Service")
@@ -62,12 +80,16 @@ public class DistanceService extends Service implements LocationListener, StepCo
                 .setContentIntent(pendingIntent)
                 .build();
 
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        stepCounter = new StepCounter(getApplicationContext());
-        stepCounter.setDelegate(this);
+        try {
+            stepCounter = new StepCounter(getApplicationContext(), stepCounterOptions);
+            stepCounter.setDelegate(this);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, distanceFilter, this);
+            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, horizontalDistanceFilter, this);
         } catch (SecurityException securityException) {
             securityException.printStackTrace();
         }
@@ -146,7 +168,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private void processLocationEvent(Location location) {
         if (locationEvents.size() >= 3) {
             calibrationCandidateDistance = calculateCumulativeDistance(locationEvents.subList(1, locationEvents.size()));
-            if (calibrationCandidateDistance >= locationsSequenceDistanceFilter) {
+            if (calibrationCandidateDistance >= distanceTraveledToCalibrate) {
                 calibrationInProgress = true;
                 int calibrationCandidateSteps = stepCounter.getStepsBetween(new Date(locationEvents.get(0).getTime()), new Date(locationEvents.get(locationEvents.size()-1).getTime()));
                 saveStepLength(calibrationCandidateDistance/calibrationCandidateSteps);
@@ -158,7 +180,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
             }
         }
 
-        if (location.getAccuracy() <= accuracyFilter) {
+        if (location.getAccuracy() <= horizontalAccuracyFilter) {
             locationEvents.add(location);
         } else {
             locationEvents.clear();
@@ -187,11 +209,11 @@ public class DistanceService extends Service implements LocationListener, StepCo
         }
     }
 
-    public void sendPluginInfo(float accuracy, String debugInfo) {
+    public void sendPluginInfo(double accuracy, String debugInfo) {
         boolean isReadyToStart = false;
 
         // No need to round accuracy on Android
-        if (accuracy <= accuracyFilter || stepLength != 0.0) {
+        if (accuracy <= horizontalAccuracyFilter || stepLength != 0.0) {
             isReadyToStart = true;
         }
 
@@ -206,7 +228,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
         sendPluginInfo(9999, debugInfo);
     }
 
-    public void sendPluginInfo(float accuracy) {
+    public void sendPluginInfo(double accuracy) {
         sendPluginInfo(accuracy, "");
     }
 

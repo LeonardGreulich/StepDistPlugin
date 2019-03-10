@@ -75,16 +75,23 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         return false;
     }
 
-    private void startLocalization(JSONObject args) throws JSONException {
+    private void startLocalization(JSONObject options) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
         }
 
         Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
 
-        serviceIntent.putExtra("distanceFilter", args.getInt("distanceFilter"));
-        serviceIntent.putExtra("accuracyFilter", args.getDouble("distanceFilter"));
-        serviceIntent.putExtra("locationsSequenceDistanceFilter", args.getDouble("distanceFilter"));
+        serviceIntent.putExtra("horizontalDistanceFilter", options.getInt("horizontalDistanceFilter"));
+        serviceIntent.putExtra("horizontalAccuracyFilter", options.getDouble("horizontalAccuracyFilter"));
+        serviceIntent.putExtra("verticalDistanceFilter", options.getInt("verticalDistanceFilter"));
+        serviceIntent.putExtra("verticalAccuracyFilter", options.getDouble("verticalAccuracyFilter"));
+        serviceIntent.putExtra("distanceTraveledToCalibrate", options.getDouble("distanceTraveledToCalibrate"));
+        serviceIntent.putExtra("updateInterval", options.getDouble("updateInterval"));
+        serviceIntent.putExtra("betterFragmentFactor", options.getDouble("betterFragmentFactor"));
+        serviceIntent.putExtra("deviationLength", options.getDouble("deviationLength"));
+        serviceIntent.putExtra("deviationAmplitude", options.getDouble("deviationAmplitude"));
+        serviceIntent.putExtra("smoothingTimeframe", options.getInt("smoothingTimeframe"));
 
         applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
