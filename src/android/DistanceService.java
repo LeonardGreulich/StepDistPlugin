@@ -21,9 +21,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import greulich.leonard.stepdist.MainActivity;
-import greulich.leonard.stepdist.R;
-
 public class DistanceService extends Service implements LocationListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();
@@ -53,7 +50,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     @Override
     public IBinder onBind(Intent intent) {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        Intent notificationIntent = new Intent(this, getMainActivity());
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
         horizontalDistanceFilter = intent.getIntExtra("horizontalDistanceFilter", 0);
@@ -73,13 +70,6 @@ public class DistanceService extends Service implements LocationListener, StepCo
             System.out.println("Error stepCounterOptions");
         }
 
-        Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
-                .setContentTitle("Distance Service")
-                .setContentText("The service is used to measure the traveled distance in the background.")
-                .setSmallIcon(R.drawable.ic_android)
-                .setContentIntent(pendingIntent)
-                .build();
-
         try {
             stepCounter = new StepCounter(getApplicationContext(), stepCounterOptions);
             stepCounter.setDelegate(this);
@@ -98,6 +88,13 @@ public class DistanceService extends Service implements LocationListener, StepCo
         isTracking = false;
         loadStepLength();
 
+
+        Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
+                .setContentTitle("Distance Service")
+                .setContentText("The service is used to measure the traveled distance in the background.")
+                .setSmallIcon(getApplicationInfo().icon)
+                .setContentIntent(pendingIntent)
+                .build();
         startForeground(1, notification);
 
         return mBinder;
@@ -107,6 +104,21 @@ public class DistanceService extends Service implements LocationListener, StepCo
     public boolean onUnbind(Intent intent) {
         locationManager.removeUpdates(this);
         return super.onUnbind(intent);
+    }
+
+    private Class getMainActivity() {
+        Context context = getApplicationContext();
+        String packageName = context.getPackageName();
+        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+        String className = launchIntent.getComponent().getClassName();
+
+        try {
+            return Class.forName(className);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     public void startMeasuringDistance() {

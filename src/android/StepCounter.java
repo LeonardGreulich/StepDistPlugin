@@ -58,6 +58,9 @@ public class StepCounter implements SensorEventListener {
     private double z;
     private DoubleList processedPoints = new DoubleArrayList();
     private IntList processedFlags = new IntArrayList();
+    
+    // Android specific (not in iOS implementation)
+    private boolean isCounting;
 
     public StepCounter(Context applicationContext, JSONObject options) throws JSONException {
         sensorManager = (SensorManager) applicationContext.getSystemService(Context.SENSOR_SERVICE);
@@ -68,25 +71,32 @@ public class StepCounter implements SensorEventListener {
         dL = options.getDouble("deviationLength");
         dA = options.getDouble("deviationAmplitude");
         rT = options.getInt("smoothingTimeframe");
+        
+        isCounting = false;
     }
 
     public void startStepCounting() {
         resetData();
+
         assert sensorManager != null;
         Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
-        handler.postDelayed(r, (long) (updateInterval*1000));
+
+        handler.postDelayed(stepCounterRunnable, (long) (updateInterval*1000));
+        isCounting = true;
     }
 
-    private Runnable r = new Runnable() {
+    private Runnable stepCounterRunnable = new Runnable() {
         public void run() {
             processMotionData(x, y, z);
-            handler.postDelayed(this, (long) (updateInterval*1000));
+            if (isCounting) {
+                handler.postDelayed(this, (long) (updateInterval*1000));
+            }
         }
     };
 
     public void stopStepCounting() {
-
+        isCounting = false;
     }
 
     private void resetData() {
