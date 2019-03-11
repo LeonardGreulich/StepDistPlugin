@@ -48,6 +48,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
 
+        distanceService = null;
         applicationContext = this.cordova.getActivity().getApplicationContext();
         createNotificationChannel();
     }
@@ -59,15 +60,15 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
             startLocalization(args.getJSONObject(0));
             return true;
         } else if (action.equals("stopLocalization")) {
-            stopLocalization(callbackContext);
+            stopLocalization();
             pluginInfoEventCallback = null;
             return true;
         } else if (action.equals("startMeasuringDistance")) {
             distanceEventCallback = callbackContext;
-            startMeasuringDistance(callbackContext);
+            startMeasuringDistance();
             return true;
         } else if (action.equals("stopMeasuringDistance")) {
-            stopMeasuringDistance(callbackContext);
+            stopMeasuringDistance();
             distanceEventCallback = null;
             return true;
         }
@@ -78,6 +79,11 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     private void startLocalization(JSONObject options) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
+
+            PluginResult pluginInfoResult = new PluginResult(PluginResult.Status.ERROR);
+            pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
+
+            return;
         }
 
         Intent serviceIntent = new Intent(applicationContext, DistanceService.class);
@@ -96,19 +102,24 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
-    private void stopLocalization(CallbackContext callbackContext) {
-        applicationContext.unbindService(serviceConnection);
+    private void stopLocalization() {
+        if (distanceService != null) {
+            applicationContext.unbindService(serviceConnection);
 
-        PluginResult result = new PluginResult(PluginResult.Status.OK);
-        callbackContext.sendPluginResult(result);
+            PluginResult result = new PluginResult(PluginResult.Status.OK);
+            pluginInfoEventCallback.sendPluginResult(result);
+        }
     }
 
-    private void startMeasuringDistance(CallbackContext callbackContext) {
+    private void startMeasuringDistance() {
         distanceService.startMeasuringDistance();
     }
 
-    private void stopMeasuringDistance(CallbackContext callbackContext) {
+    private void stopMeasuringDistance() {
         distanceService.stopMeasuringDistance();
+
+        PluginResult result = new PluginResult(PluginResult.Status.OK);
+        distanceEventCallback.sendPluginResult(result);
     }
 
     private void createNotificationChannel() {
@@ -126,11 +137,12 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     }
 
     @Override
-    public void distanceDidChange(int distanceTraveled, int stepsTaken) {
+    public void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain) {
         JSONObject distanceInfo = new JSONObject();
         try {
             distanceInfo.put("distanceTraveled", distanceTraveled);
             distanceInfo.put("stepsTaken", stepsTaken);
+            distanceInfo.put("relativeAltitudeGain", relativeAltitudeGain);
         } catch (JSONException e) {
             System.out.println("Error distanceInfo");
         }
@@ -161,8 +173,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
 
     @Override
     public void onDestroy() {
-        stopMeasuringDistance(distanceEventCallback);
-        stopLocalization(pluginInfoEventCallback);
+        stopMeasuringDistance();
+        stopLocalization();
         super.onDestroy();
     }
 

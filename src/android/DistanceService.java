@@ -10,6 +10,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
@@ -21,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static java.lang.Math.abs;
+
 public class DistanceService extends Service implements LocationListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();
@@ -31,6 +34,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private DistanceServiceDelegate delegate;
 
     private List<Location> locationEvents;
+    private List<Float> altitudeEvents;
 
     private int horizontalDistanceFilter;
     private double horizontalAccuracyFilter;
@@ -40,6 +44,8 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     private float stepLength;
     private float calibrationCandidateDistance;
+    private float lastAltitude;
+    private int relativeAltitudeGain;
     private int distanceTraveledPersistent;
     private int distanceTraveledProvisional;
     private int stepsTakenPersistent;
@@ -123,12 +129,15 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     public void startMeasuringDistance() {
         locationEvents = new ArrayList<>();
+        altitudeEvents = new ArrayList<>();
         distanceTraveledPersistent = 0;
         distanceTraveledProvisional = 0;
         stepsTakenPersistent = 0;
         stepsTakenProvisional = 0;
         calibrationInProgress = false;
         calibrationCandidateDistance = 0;
+        lastAltitude = 0;
+        relativeAltitudeGain = 0;
 
         stepCounter.startStepCounting();
 
@@ -174,7 +183,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
         stepsTakenProvisional = count-stepsTakenPersistent;
         distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
 
-        delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional);
+        delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional, relativeAltitudeGain);
     }
 
     private void processLocationEvent(Location location) {
@@ -199,6 +208,15 @@ public class DistanceService extends Service implements LocationListener, StepCo
             calibrationCandidateDistance = 0;
             sendPluginInfo("Calibr. cancel.: Accuracy (" + String.valueOf(location.getAccuracy()) + ")");
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && location.hasVerticalAccuracy() && location.getVerticalAccuracyMeters() <= verticalAccuracyFilter) {
+            updateRelativeAltitude((float) location.getAltitude());
+        // If the location event does not have vertical accuracy we simply check the horizontal accuracy
+        } else if (location.getAccuracy() <= horizontalAccuracyFilter) {
+            updateRelativeAltitude((float) location.getAltitude());
+        } else {
+            altitudeEvents.clear();
+        }
     }
 
     private float calculateCumulativeDistance(List<Location> locations) {
@@ -213,6 +231,31 @@ public class DistanceService extends Service implements LocationListener, StepCo
         }
 
         return cumulativeDistance;
+    }
+
+    private void updateRelativeAltitude(float currentApproximateAltitude) {
+        altitudeEvents.add(currentApproximateAltitude);
+        if (altitudeEvents.size() == verticalDistanceFilter) {
+            float sumAltitudes = 0f;
+            float sumDiffAltitudes = 0f;
+            for (int i = 0; i < verticalDistanceFilter-1; i++) {
+                sumAltitudes += altitudeEvents.get(i);
+                sumDiffAltitudes += abs(altitudeEvents.get(i+1) - altitudeEvents.get(i));
+            }
+            sumAltitudes += altitudeEvents.get(verticalDistanceFilter-1);
+            if (sumDiffAltitudes >= 1) {
+                return;
+            }
+            float currentAltitude = Math.round(sumAltitudes / verticalDistanceFilter);
+            if (lastAltitude != 0.0) {
+                float relativeAltitude = currentAltitude - lastAltitude;
+                if (relativeAltitude >= 0) {
+                    relativeAltitudeGain += Math.round(relativeAltitude);
+                }
+            }
+            lastAltitude = currentAltitude;
+            altitudeEvents.remove(0);
+        }
     }
 
     public class LocalBinder extends Binder {
@@ -260,7 +303,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
     }
 
     public interface DistanceServiceDelegate {
-        void distanceDidChange(int distanceTraveled, int stepsTaken);
+        void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain);
         void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength);
     }
 

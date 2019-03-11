@@ -28,9 +28,18 @@
     }
 
     @objc(stopLocalization:) func stopLocalization(command: CDVInvokedUrlCommand) {
-        pluginInfoEventCallbackId = nil
-        
         distanceService.stopLocalization()
+
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK
+        )
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: pluginInfoEventCallbackId
+        )
+
+        pluginInfoEventCallbackId = nil
     }
     
     @objc(startMeasuringDistance:) func startMeasuringDistance(command: CDVInvokedUrlCommand) {     
@@ -39,16 +48,27 @@
         distanceService.startMeasuringDistance()
     }
 
-    @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {     
-        distanceEventCallbackId = nil
-        
+    @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {
         distanceService.stopMeasuringDistance()
+        
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK
+        )
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: distanceEventCallbackId
+        )
+
+        distanceEventCallbackId = nil
     }
     
-    func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int) {
+    func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
-            messageAs: ["distanceTraveled": distanceTraveled, "stepsTaken": stepsTaken]
+            messageAs: ["distanceTraveled": distanceTraveled,
+                        "stepsTaken": stepsTaken,
+                        "relativeAltitudeGain": relativeAltitudeGain]
         )
         pluginResult?.setKeepCallbackAs(true)
         
@@ -61,7 +81,10 @@
     func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
-            messageAs: ["isReadyToStart": isReadyToStart, "debugInfo": debugInfo, "lastCalibrated": lastCalibrated, "stepLength": stepLength]
+            messageAs: ["isReadyToStart": isReadyToStart,
+                        "debugInfo": debugInfo,
+                        "lastCalibrated": lastCalibrated,
+                        "stepLength": stepLength]
         )
         pluginResult?.setKeepCallbackAs(true)
         

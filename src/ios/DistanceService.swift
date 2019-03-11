@@ -14,6 +14,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     var delegate: DistanceServiceDelegate!
     
     private var locationEvents: [CLLocation]!
+    private var altitudeEvents: [Double]!
     
     private var horizontalDistanceFilter: Double!
     private var horizontalAccuracyFilter: Double!
@@ -23,6 +24,8 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     
     private var stepLength: Double!
     private var calibrationCandidateDistance: Double!
+    private var lastAltitude: Double!
+    private var relativeAltitudeGain: Int!
     private var distanceTraveledPersistent: Int!
     private var distanceTraveledProvisional: Int!
     private var stepsTakenPersistent: Int!
@@ -36,22 +39,22 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         
         // Try to parse parameter options into variables
         if let horizontalDistanceFilter = options["horizontalDistanceFilter"] as? Double,
-        let horizontalAccuracyFilter = options["horizontalAccuracyFilter"] as? Double,
-        let verticalDistanceFilter = options["verticalDistanceFilter"] as? Double,
-        let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
-        let distanceTraveledToCalibrate = options["distanceTraveledToCalibrate"] as? Double,
-        let updateInterval = options["updateInterval"] as? Double,
-        let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
-        let deviationLength = options["deviationLength"] as? Double,
-        let deviationAmplitude = options["deviationAmplitude"] as? Double,
-        let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
+            let horizontalAccuracyFilter = options["horizontalAccuracyFilter"] as? Double,
+            let verticalDistanceFilter = options["verticalDistanceFilter"] as? Double,
+            let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
+            let distanceTraveledToCalibrate = options["distanceTraveledToCalibrate"] as? Double,
+            let updateInterval = options["updateInterval"] as? Double,
+            let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
+            let deviationLength = options["deviationLength"] as? Double,
+            let deviationAmplitude = options["deviationAmplitude"] as? Double,
+            let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
             // Store location parameters
             self.horizontalDistanceFilter = horizontalDistanceFilter
             self.horizontalAccuracyFilter = horizontalAccuracyFilter
             self.verticalDistanceFilter = verticalDistanceFilter
             self.verticalAccuracyFilter = verticalAccuracyFilter
             self.distanceTraveledToCalibrate = distanceTraveledToCalibrate
-
+            
             // Prepare dictionary with step counter parameters
             stepCounterOptions = ["updateInterval": updateInterval,
                                   "betterFragmentFactor": betterFragmentFactor,
@@ -80,9 +83,9 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
-    
+        
         loadStepLength()
-    
+        
         updatePluginInfo()
         
         isTracking = false;
@@ -94,12 +97,15 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     
     func startMeasuringDistance() {
         locationEvents = []
+        altitudeEvents = []
         distanceTraveledPersistent = 0
         distanceTraveledProvisional = 0
         stepsTakenPersistent = 0
         stepsTakenProvisional = 0
         calibrationInProgress = false
         calibrationCandidateDistance = 0
+        lastAltitude = 0
+        relativeAltitudeGain = 0
         
         stepCounter.startStepCounting()
         
@@ -131,14 +137,21 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             isReadyToStart = true;
         }
         
-        delegate.pluginInfoDidChange(manager: self, isReadyToStart: isReadyToStart, debugInfo: debugInfo, lastCalibrated: lastCalibrated, stepLength: stepLength)
+        delegate.pluginInfoDidChange(manager: self,
+                                     isReadyToStart: isReadyToStart,
+                                     debugInfo: debugInfo,
+                                     lastCalibrated: lastCalibrated,
+                                     stepLength: stepLength)
     }
     
     func stepCountDidChange(manager: StepCounter, count: Int) {
         stepsTakenProvisional = count-stepsTakenPersistent
         distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
         
-        delegate.distanceDidChange(manager: self, distanceTraveled: distanceTraveledPersistent+distanceTraveledProvisional, stepsTaken: stepsTakenPersistent+stepsTakenProvisional)
+        delegate.distanceDidChange(manager: self,
+                                   distanceTraveled: distanceTraveledPersistent+distanceTraveledProvisional,
+                                   stepsTaken: stepsTakenPersistent+stepsTakenProvisional,
+                                   relativeAltitudeGain: relativeAltitudeGain)
     }
     
     func processLocationEvent(_ locationEvent: CLLocation) {
@@ -155,7 +168,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                 // As a delegate, this class has the most recent step count data from the step counter
                 calibrationInProgress = false
                 stepsTakenPersistent += stepsTakenProvisional
-                distanceTraveledPersistent += Int(Double(stepsTakenProvisional)*stepLength)
+                distanceTraveledPersistent += Int(round(Double(stepsTakenProvisional)*stepLength))
             }
         }
         
@@ -164,7 +177,13 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         } else {
             locationEvents.removeAll()
             calibrationCandidateDistance = 0.0
-            updatePluginInfo(debugInfo: "Calibr. cancel.: Accuracy (\(roundAccuracy(locationEvent.horizontalAccuracy)))");
+            updatePluginInfo(debugInfo: "Calibr. cancel.: Accuracy (\(roundAccuracy(locationEvent.horizontalAccuracy)))")
+        }
+        
+        if locationEvent.horizontalAccuracy <= horizontalAccuracyFilter {
+            updateRelativeAltitude(locationEvent.altitude)
+        } else {
+            altitudeEvents.removeAll()
         }
     }
     
@@ -180,6 +199,31 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
         
         return cumulativeDistance
+    }
+    
+    func updateRelativeAltitude(_ currentApproximateAltitude: Double) {
+        altitudeEvents.append(currentApproximateAltitude);
+        if altitudeEvents.count == Int(verticalDistanceFilter) {
+            var sumAltitudes: Double = 0.0
+            var sumDiffAltitudes: Double = 0.0
+            for i in 0...Int(verticalDistanceFilter)-2 {
+                sumAltitudes += altitudeEvents[i]
+                sumDiffAltitudes += abs(altitudeEvents[i+1] - altitudeEvents[i])
+            }
+            sumAltitudes += altitudeEvents[Int(verticalDistanceFilter)-1];
+            if sumDiffAltitudes >= 1 {
+                return
+            }
+            let currentAltitude: Double = sumAltitudes / verticalDistanceFilter
+            if lastAltitude != 0.0 {
+                let relativeAltitude: Double = currentAltitude - lastAltitude;
+                if (relativeAltitude >= 0) {
+                    relativeAltitudeGain += Int(round(relativeAltitude))
+                }
+            }
+            lastAltitude = currentAltitude
+            altitudeEvents.remove(at: 0)
+        }
     }
     
     func roundAccuracy(_ accuracy: Double) -> Double {
@@ -202,6 +246,6 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
 }
 
 protocol DistanceServiceDelegate {
-    func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int)
+    func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int)
     func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double)
 }

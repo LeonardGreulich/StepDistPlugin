@@ -53,11 +53,11 @@ public class StepCounter implements SensorEventListener {
     private List<Date> precedingStepDates = new ArrayList<>();
 
     // Java-specific (not on iOS implementation)
+    private DoubleList processedPoints = new DoubleArrayList();
+    private IntList processedFlags = new IntArrayList();
     private double x;
     private double y;
     private double z;
-    private DoubleList processedPoints = new DoubleArrayList();
-    private IntList processedFlags = new IntArrayList();
     
     // Android specific (not in iOS implementation)
     private boolean isCounting;
