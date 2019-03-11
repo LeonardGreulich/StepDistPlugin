@@ -6,12 +6,17 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 
@@ -24,10 +29,12 @@ import java.util.List;
 
 import static java.lang.Math.abs;
 
-public class DistanceService extends Service implements LocationListener, StepCounter.StepCounterDelegate {
+public class DistanceService extends Service implements LocationListener, SensorEventListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();
 
+    private SensorManager sensorManager;
+    private Handler handler;
     private LocationManager locationManager;
     private StepCounter stepCounter;
     private SharedPreferences preferences;
@@ -36,6 +43,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private List<Location> locationEvents;
     private List<Float> altitudeEvents;
 
+    private double sensorUpdateInterval;
     private int horizontalDistanceFilter;
     private double horizontalAccuracyFilter;
     private int verticalDistanceFilter;
@@ -54,6 +62,10 @@ public class DistanceService extends Service implements LocationListener, StepCo
     private boolean calibrationInProgress;
     private boolean isTracking;
 
+    private double gravityX;
+    private double gravityY;
+    private double gravityZ;
+
     @Override
     public IBinder onBind(Intent intent) {
         Intent notificationIntent = new Intent(this, getMainActivity());
@@ -64,6 +76,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
         verticalDistanceFilter = intent.getIntExtra("verticalDistanceFilter", 0);
         verticalAccuracyFilter = intent.getDoubleExtra("verticalAccuracyFilter", 0);
         distanceTraveledToCalibrate = intent.getDoubleExtra("distanceTraveledToCalibrate", 0);
+        sensorUpdateInterval = intent.getDoubleExtra("updateInterval", 0);
 
         JSONObject stepCounterOptions = new JSONObject();
         try {
@@ -82,6 +95,9 @@ public class DistanceService extends Service implements LocationListener, StepCo
         } catch (JSONException e) {
             e.printStackTrace();
         }
+
+        sensorManager = (SensorManager) getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
+        handler = new Handler();
 
         try {
             locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -127,6 +143,15 @@ public class DistanceService extends Service implements LocationListener, StepCo
         return null;
     }
 
+    private Runnable stepCounterRunnable = new Runnable() {
+        public void run() {
+            stepCounter.processMotionData(gravityX, gravityY, gravityZ);
+            if (isTracking) {
+                handler.postDelayed(this, (long) (sensorUpdateInterval*1000));
+            }
+        }
+    };
+
     public void startMeasuringDistance() {
         locationEvents = new ArrayList<>();
         altitudeEvents = new ArrayList<>();
@@ -139,14 +164,18 @@ public class DistanceService extends Service implements LocationListener, StepCo
         lastAltitude = 0;
         relativeAltitudeGain = 0;
 
-        stepCounter.startStepCounting();
+        stepCounter.resetData();
+
+        assert sensorManager != null;
+        Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
+
+        handler.postDelayed(stepCounterRunnable, (long) (sensorUpdateInterval*1000));
 
         isTracking = true;
     }
 
     public void stopMeasuringDistance() {
-        stepCounter.stopStepCounting();
-
         isTracking = false;
     }
 
@@ -300,6 +329,18 @@ public class DistanceService extends Service implements LocationListener, StepCo
         editor.putFloat("stepLength", stepLength);
         editor.putLong("lastCalibrated", lastCalibrated);
         editor.apply();
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        gravityX = event.values[0];
+        gravityY = event.values[1];
+        gravityZ = event.values[2];
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
     }
 
     public interface DistanceServiceDelegate {

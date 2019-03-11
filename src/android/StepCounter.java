@@ -1,11 +1,6 @@
 package cordova.plugin.stepdist;
 
 import android.content.Context;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.os.Handler;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,11 +19,9 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import static java.lang.Math.abs;
 
-public class StepCounter implements SensorEventListener {
-
-    private SensorManager sensorManager;
+public class StepCounter {
+    
     private StepCounterDelegate delegate;
-    private Handler handler;
 
     // Parameters
     private Double updateInterval; // Sets how often new data from the motion sensors should be received
@@ -39,7 +32,7 @@ public class StepCounter implements SensorEventListener {
 
     // Raw gravity data and information about maxima and minima
     private List<DoubleArrayList> gravityData = new ArrayList<>(); // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
-    private List<IntArrayList> gravityFlag = new ArrayList<>(); // Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
+    private List<IntArrayList> gravityFlag = new ArrayList<>();// Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
 
     // Supplementary variables
     private Fragment representativeFragment = new Fragment(); // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
@@ -55,55 +48,19 @@ public class StepCounter implements SensorEventListener {
     // Java-specific (not on iOS implementation)
     private DoubleList processedPoints = new DoubleArrayList();
     private IntList processedFlags = new IntArrayList();
-    private double x;
-    private double y;
-    private double z;
-    
-    // Android specific (not in iOS implementation)
-    private boolean isCounting;
 
     public StepCounter(Context applicationContext, JSONObject options) throws JSONException {
-        sensorManager = (SensorManager) applicationContext.getSystemService(Context.SENSOR_SERVICE);
-        handler = new Handler();
-
         updateInterval = options.getDouble("updateInterval");
         bFF = options.getDouble("betterFragmentFactor");
         dL = options.getDouble("deviationLength");
         dA = options.getDouble("deviationAmplitude");
         rT = options.getInt("smoothingTimeframe");
-        
-        isCounting = false;
     }
 
-    public void startStepCounting() {
-        resetData();
-
-        assert sensorManager != null;
-        Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        Double samplingRateInMicoseconds = updateInterval*10000000;
-        sensorManager.registerListener(this, gravitySensor , samplingRateInMicoseconds.intValue());
-
-        handler.postDelayed(stepCounterRunnable, (long) (updateInterval*1000));
-        isCounting = true;
-    }
-
-    private Runnable stepCounterRunnable = new Runnable() {
-        public void run() {
-            processMotionData(x, y, z);
-            if (isCounting) {
-                handler.postDelayed(this, (long) (updateInterval*1000));
-            }
-        }
-    };
-
-    public void stopStepCounting() {
-        isCounting = false;
-    }
-
-    private void resetData() {
+    public void resetData() {
         //First, reset motion data and information about maxima and minima
         gravityData = new ArrayList<>();
-        gravityFlag = new ArrayList<>();
+        gravityData = new ArrayList<>();
 
         // Second, reset supplementary variables
         pastThreeExtremaX = new ArrayList<>();
@@ -113,8 +70,8 @@ public class StepCounter implements SensorEventListener {
         // Fill two-dimensional lists with empty lists
         for (int i = 0; i <= 2; i++) {
             gravityData.add(new DoubleArrayList());
-            gravityFlag.add(new IntArrayList());
             gravityFlag.get(i).add(0);
+            gravityFlag.add(new IntArrayList());
             pastThreeExtremaX.add(new IntArrayList());
             pastThreeExtremaY.add(new DoubleArrayList());
             fragments.add(new ArrayList<>());
@@ -137,7 +94,7 @@ public class StepCounter implements SensorEventListener {
         similarities.add(new BooleanArrayList());
     }
 
-    private void processMotionData(double x, double y, double z) {
+    public void processMotionData(double x, double y, double z) {
         // First, simply store the new incoming data points in the gravity and accelerometer array
         gravityData.get(0).add(x);
         gravityData.get(1).add(y);
@@ -235,8 +192,8 @@ public class StepCounter implements SensorEventListener {
         boolean foundExtreme = false;
         int firstExtremePos = 0;
 
-        for (int i = 0; i <= points.size()-1; i++) {
-            if (foundExtreme && flags.getInt(i) == flags.getInt(firstExtremePos)) {
+        for (int i = 0; i <= processedPoints.size()-1; i++) {
+            if (foundExtreme && processedFlags.getInt(i) == processedFlags.getInt(firstExtremePos)) {
                 processedPoints.removeElements(firstExtremePos+1, i);
                 processedFlags.removeElements(firstExtremePos+1, i);
                 int lengthOfNewDataPoints = i-firstExtremePos-1;
@@ -244,8 +201,8 @@ public class StepCounter implements SensorEventListener {
                 int[] newFlags = new int[lengthOfNewDataPoints];
                 Arrays.fill(newDataPoints, (points.getDouble(firstExtremePos) + points.getDouble(i))/2);
                 Arrays.fill(newFlags, 0);
-                processedPoints.addElements(firstExtremePos+1, newDataPoints);
-                processedFlags.addElements(firstExtremePos+1, newFlags);
+                processedPoints.addElements(firstExtremePos+1, newDataPoints, 0, lengthOfNewDataPoints);
+                processedFlags.addElements(firstExtremePos+1, newFlags, 0, lengthOfNewDataPoints);
                 if (processedFlags.getInt(i) == 1) {
                     if (processedPoints.getDouble(firstExtremePos) > processedPoints.getDouble(i)) {
                         processedFlags.set(i, 0);
@@ -369,18 +326,6 @@ public class StepCounter implements SensorEventListener {
         Date endDate15Seconds = new Date(currentDate.getTime()-(rTInMilliseconds));
 
         return getStepsBetween(startDate15Seconds, endDate15Seconds)*4;
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        x = event.values[0];
-        y = event.values[1];
-        z = event.values[2];
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
     }
 
     public interface StepCounterDelegate {
