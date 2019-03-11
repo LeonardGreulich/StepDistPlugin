@@ -80,7 +80,8 @@ public class StepCounter implements SensorEventListener {
 
         assert sensorManager != null;
         Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
+        Double samplingRateInMicoseconds = updateInterval*10000000;
+        sensorManager.registerListener(this, gravitySensor , samplingRateInMicoseconds.intValue());
 
         handler.postDelayed(stepCounterRunnable, (long) (updateInterval*1000));
         isCounting = true;
@@ -235,7 +236,7 @@ public class StepCounter implements SensorEventListener {
         int firstExtremePos = 0;
 
         for (int i = 0; i <= points.size()-1; i++) {
-            if (foundExtreme && points.getInt(i) == points.getInt(firstExtremePos)) {
+            if (foundExtreme && flags.getInt(i) == flags.getInt(firstExtremePos)) {
                 processedPoints.removeElements(firstExtremePos+1, i);
                 processedFlags.removeElements(firstExtremePos+1, i);
                 int lengthOfNewDataPoints = i-firstExtremePos-1;

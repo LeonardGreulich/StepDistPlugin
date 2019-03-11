@@ -152,7 +152,7 @@ public class DistanceService extends Service implements LocationListener, StepCo
 
     @Override
     public void onLocationChanged(Location location) {
-        sendPluginInfo(location.getAccuracy());
+        sendPluginInfo(location.getAccuracy(), "Accuracy: " + String.valueOf(location.getAccuracy()));
 
         if (isTracking) {
             processLocationEvent(location);

@@ -123,7 +123,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             return
         }
         
-        updatePluginInfo(accuracy: locationEvent.horizontalAccuracy)
+        updatePluginInfo(accuracy: locationEvent.horizontalAccuracy, debugInfo: "Accuracy: \(locationEvent.horizontalAccuracy)")
         
         if isTracking {
             processLocationEvent(locationEvent)
