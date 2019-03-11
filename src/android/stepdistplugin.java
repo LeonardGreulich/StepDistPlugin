@@ -113,6 +113,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
 
     private void startMeasuringDistance() {
         distanceService.startMeasuringDistance();
+        
+        distanceDidChange(0, 0, 0);
     }
 
     private void stopMeasuringDistance() {

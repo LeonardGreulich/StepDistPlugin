@@ -234,8 +234,8 @@ public class StepCounter implements SensorEventListener {
         boolean foundExtreme = false;
         int firstExtremePos = 0;
 
-        for (int i = 0; i <= processedPoints.size()-1; i++) {
-            if (foundExtreme && processedFlags.getInt(i) == processedFlags.getInt(firstExtremePos)) {
+        for (int i = 0; i <= points.size()-1; i++) {
+            if (foundExtreme && points.getInt(i) == points.getInt(firstExtremePos)) {
                 processedPoints.removeElements(firstExtremePos+1, i);
                 processedFlags.removeElements(firstExtremePos+1, i);
                 int lengthOfNewDataPoints = i-firstExtremePos-1;
@@ -243,8 +243,8 @@ public class StepCounter implements SensorEventListener {
                 int[] newFlags = new int[lengthOfNewDataPoints];
                 Arrays.fill(newDataPoints, (points.getDouble(firstExtremePos) + points.getDouble(i))/2);
                 Arrays.fill(newFlags, 0);
-                processedPoints.addElements(firstExtremePos, newDataPoints, 0, lengthOfNewDataPoints);
-                processedFlags.addElements(firstExtremePos, newFlags, 0, lengthOfNewDataPoints);
+                processedPoints.addElements(firstExtremePos+1, newDataPoints);
+                processedFlags.addElements(firstExtremePos+1, newFlags);
                 if (processedFlags.getInt(i) == 1) {
                     if (processedPoints.getDouble(firstExtremePos) > processedPoints.getDouble(i)) {
                         processedFlags.set(i, 0);

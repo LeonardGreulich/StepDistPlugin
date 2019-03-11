@@ -46,6 +46,8 @@
         distanceEventCallbackId = command.callbackId
         
         distanceService.startMeasuringDistance()
+        
+        distanceDidChange(manager: distanceService, distanceTraveled: 0, stepsTaken: 0, relativeAltitudeGain: 0)
     }
 
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {
