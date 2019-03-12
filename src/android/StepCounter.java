@@ -70,8 +70,8 @@ public class StepCounter {
         // Fill two-dimensional lists with empty lists
         for (int i = 0; i <= 2; i++) {
             gravityData.add(new DoubleArrayList());
-            gravityFlag.get(i).add(0);
             gravityFlag.add(new IntArrayList());
+            gravityFlag.get(i).add(0);
             pastThreeExtremaX.add(new IntArrayList());
             pastThreeExtremaY.add(new DoubleArrayList());
             fragments.add(new ArrayList<>());
@@ -201,8 +201,8 @@ public class StepCounter {
                 int[] newFlags = new int[lengthOfNewDataPoints];
                 Arrays.fill(newDataPoints, (points.getDouble(firstExtremePos) + points.getDouble(i))/2);
                 Arrays.fill(newFlags, 0);
-                processedPoints.addElements(firstExtremePos+1, newDataPoints, 0, lengthOfNewDataPoints);
-                processedFlags.addElements(firstExtremePos+1, newFlags, 0, lengthOfNewDataPoints);
+                processedPoints.addElements(firstExtremePos+1, newDataPoints);
+                processedFlags.addElements(firstExtremePos+1, newFlags);
                 if (processedFlags.getInt(i) == 1) {
                     if (processedPoints.getDouble(firstExtremePos) > processedPoints.getDouble(i)) {
                         processedFlags.set(i, 0);
