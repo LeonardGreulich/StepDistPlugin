@@ -1,6 +1,7 @@
 package cordova.plugin.stepdist;
 
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -68,9 +69,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     @Override
     public IBinder onBind(Intent intent) {
-        Intent notificationIntent = new Intent(this, getMainActivity());
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-
         horizontalDistanceFilter = intent.getIntExtra("horizontalDistanceFilter", 0);
         horizontalAccuracyFilter = intent.getDoubleExtra("horizontalAccuracyFilter", 0);
         verticalDistanceFilter = intent.getIntExtra("verticalDistanceFilter", 0);
@@ -110,14 +108,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         isTracking = false;
         loadStepLength();
 
-
-        Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
-                .setContentTitle("Distance Service")
-                .setContentText("The service is used to measure the traveled distance in the background.")
-                .setSmallIcon(getApplicationInfo().icon)
-                .setContentIntent(pendingIntent)
-                .build();
-        startForeground(1, notification);
+        startForeground(1, buildNotification(0));
 
         return mBinder;
     }
@@ -126,6 +117,19 @@ public class DistanceService extends Service implements LocationListener, Sensor
     public boolean onUnbind(Intent intent) {
         locationManager.removeUpdates(this);
         return super.onUnbind(intent);
+    }
+
+    private Notification buildNotification(int stepCount) {
+        Intent notificationIntent = new Intent(this, getMainActivity());
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
+                .setContentTitle("Distance Service")
+                .setContentText("Steps: " + String.valueOf(stepCount))
+                .setSmallIcon(getApplicationInfo().icon)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        return notification;
     }
 
     private Class getMainActivity() {
@@ -211,6 +215,11 @@ public class DistanceService extends Service implements LocationListener, Sensor
     public void stepCountDidChange(int count) {
         stepsTakenProvisional = count-stepsTakenPersistent;
         distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.notify(1, buildNotification(count));
+        }
 
         delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional, relativeAltitudeGain);
     }
@@ -339,8 +348,12 @@ public class DistanceService extends Service implements LocationListener, Sensor
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
     }
 
     public interface DistanceServiceDelegate {

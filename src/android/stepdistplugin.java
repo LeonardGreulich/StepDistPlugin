@@ -7,8 +7,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.provider.Settings;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -20,6 +23,8 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import static android.content.Context.POWER_SERVICE;
 
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
@@ -79,6 +84,17 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     private void startLocalization(JSONObject options) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
+
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Intent intent = new Intent();
+                String packageName = applicationContext.getPackageName();
+                PowerManager pm = (PowerManager) applicationContext.getSystemService(POWER_SERVICE);
+                if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                    intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + packageName));
+                    applicationContext.startActivity(intent);
+                }
+            }
 
             PluginResult pluginInfoResult = new PluginResult(PluginResult.Status.ERROR);
             pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
