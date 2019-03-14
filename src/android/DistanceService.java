@@ -35,7 +35,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private final IBinder mBinder = new LocalBinder();
 
     private SensorManager sensorManager;
-    private Handler handler;
     private LocationManager locationManager;
     private StepCounter stepCounter;
     private SharedPreferences preferences;
@@ -61,11 +60,12 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private int stepsTakenProvisional;
     private long lastCalibrated;
     private boolean calibrationInProgress;
-    private boolean isTracking;
 
-    private double gravityX;
-    private double gravityY;
-    private double gravityZ;
+    private volatile boolean isTracking;
+
+    private volatile double gravityX;
+    private volatile double gravityY;
+    private volatile double gravityZ;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -95,7 +95,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
         }
 
         sensorManager = (SensorManager) getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
-        handler = new Handler();
 
         try {
             locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -147,15 +146,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return null;
     }
 
-    private Runnable stepCounterRunnable = new Runnable() {
-        public void run() {
-            stepCounter.processMotionData(gravityX, gravityY, gravityZ);
-            if (isTracking) {
-                handler.postDelayed(this, (long) (sensorUpdateInterval*1000));
-            }
-        }
-    };
-
     public void startMeasuringDistance() {
         locationEvents = new ArrayList<>();
         altitudeEvents = new ArrayList<>();
@@ -174,9 +164,10 @@ public class DistanceService extends Service implements LocationListener, Sensor
         Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
 
-        handler.postDelayed(stepCounterRunnable, (long) (sensorUpdateInterval*1000));
-
         isTracking = true;
+
+        StepCounterThread stepCounterThread = new StepCounterThread();
+        stepCounterThread.start();
     }
 
     public void stopMeasuringDistance() {
@@ -359,6 +350,28 @@ public class DistanceService extends Service implements LocationListener, Sensor
     public interface DistanceServiceDelegate {
         void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain);
         void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength);
+    }
+
+    class StepCounterThread extends Thread {
+        Handler handler = new Handler();
+
+        private Runnable stepCounterRunnable = new Runnable() {
+            public void run() {
+                stepCounter.processMotionData(gravityX, gravityY, gravityZ);
+                if (isTracking) {
+                    handler.postDelayed(this, (long) (sensorUpdateInterval*1000));
+                }
+            }
+        };
+
+        @Override
+        public void run() {
+            if (!isTracking) {
+                return;
+            }
+
+            handler.postDelayed(stepCounterRunnable, (long) (sensorUpdateInterval*1000));
+        }
     }
 
 }
