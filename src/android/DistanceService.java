@@ -162,7 +162,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
         assert sensorManager != null;
         Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        sensorManager.registerListener(this, gravitySensor , SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, gravitySensor, (int) (sensorUpdateInterval*1000000));
 
         isTracking = true;
 
