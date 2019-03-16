@@ -193,7 +193,6 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     public void onDestroy() {
         stopMeasuringDistance();
         stopLocalization();
-        System.out.println("Plugin destroyed");
         super.onDestroy();
     }
 

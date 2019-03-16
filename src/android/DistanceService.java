@@ -162,8 +162,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
         assert sensorManager != null;
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), (int) (sensorUpdateInterval*1000000));
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), (int) (sensorUpdateInterval*1000000));
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), (int) (sensorUpdateInterval*1000000));
 
         isTracking = true;
 
@@ -335,11 +333,9 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
-            gravityX = event.values[0];
-            gravityY = event.values[1];
-            gravityZ = event.values[2];
-        }
+        gravityX = event.values[0];
+        gravityY = event.values[1];
+        gravityZ = event.values[2];
     }
 
     @Override
@@ -380,7 +376,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     @Override
     public void onDestroy() {
-        System.out.println("Service Destroyed");
         super.onDestroy();
     }
 }
