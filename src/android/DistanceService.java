@@ -171,6 +171,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
     }
 
     public void stopMeasuringDistance() {
+        sensorManager.unregisterListener(this);
         isTracking = false;
     }
 

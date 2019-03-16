@@ -4,15 +4,12 @@ import android.content.Context;
 
 import org.apache.commons.collections.primitives.ArrayDoubleList;
 import org.apache.commons.collections.primitives.ArrayIntList;
-import org.apache.commons.collections.primitives.DoubleCollection;
 import org.apache.commons.collections.primitives.DoubleList;
 import org.apache.commons.collections.primitives.IntList;
-import org.apache.commons.collections.primitives.adapters.CollectionDoubleCollection;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -55,7 +52,7 @@ public class StepCounter {
     public void resetData() {
         //First, reset motion data and information about maxima and minima
         gravityData = new ArrayList<>();
-        gravityData = new ArrayList<>();
+        gravityFlag = new ArrayList<>();
 
         // Second, reset supplementary variables
         pastThreeExtremaX = new ArrayList<>();
