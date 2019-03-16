@@ -51,5 +51,6 @@
 		<source-file src="src/android/StepCounter.java" target-dir="src/cordova/plugin/stepdist/" />
 		<source-file src="src/android/Fragment.java" target-dir="src/cordova/plugin/stepdist/" />
 		<framework src="com.android.support:appcompat-v7:27.1.1" />
+		<framework src="commons-primitives:commons-primitives:1.0" />
 	</platform>
 </plugin>

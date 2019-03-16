@@ -2,6 +2,12 @@ package cordova.plugin.stepdist;
 
 import android.content.Context;
 
+import org.apache.commons.collections.primitives.ArrayDoubleList;
+import org.apache.commons.collections.primitives.ArrayIntList;
+import org.apache.commons.collections.primitives.DoubleCollection;
+import org.apache.commons.collections.primitives.DoubleList;
+import org.apache.commons.collections.primitives.IntList;
+import org.apache.commons.collections.primitives.adapters.CollectionDoubleCollection;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -24,23 +30,19 @@ public class StepCounter {
     private Integer rT; // Smoothing timeframe
 
     // Raw gravity data and information about maxima and minima
-    private List<List<Double>> gravityData = new ArrayList<>(); // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
-    private List<List<Integer>> gravityFlag = new ArrayList<>();// Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
+    private List<DoubleList> gravityData = new ArrayList<>(); // Two dimensional array that holds all gravity datapoints, each having a x-, y-, and z-axis
+    private List<IntList> gravityFlag = new ArrayList<>();// Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
 
     // Supplementary variables
     private Fragment representativeFragment = new Fragment(); // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
-    private List<List<Integer>> pastThreeExtremaX = new ArrayList<>(); // Hold the x values of the past three extrema
-    private List<List<Double>> pastThreeExtremaY = new ArrayList<>(); // Holds the y values of the past three extrema
+    private List<IntList> pastThreeExtremaX = new ArrayList<>(); // Hold the x values of the past three extrema
+    private List<DoubleList> pastThreeExtremaY = new ArrayList<>(); // Holds the y values of the past three extrema
     private List<List<Fragment>> fragments = new ArrayList<>(); // Holds all found fragments
     private List<List<Boolean>> similarities = new ArrayList<>(); // Holds all information of comparison of fragments and whether they are similar or not
-    private List<Integer> reprFragmentOfAxis = new ArrayList<>();
+    private IntList reprFragmentOfAxis = new ArrayIntList();
     private Integer i = 0;
     private List<Date> currentStepDates = new ArrayList<>();
     private List<Date> precedingStepDates = new ArrayList<>();
-
-    // Java-specific (not on iOS implementation)
-    private List<Double> processedPoints = new ArrayList<>();
-    private List<Integer> processedFlags = new ArrayList<>();
 
     public StepCounter(Context applicationContext, JSONObject options) throws JSONException {
         updateInterval = options.getDouble("updateInterval");
@@ -62,16 +64,16 @@ public class StepCounter {
 
         // Fill two-dimensional lists with empty lists
         for (int i = 0; i <= 2; i++) {
-            gravityData.add(new ArrayList<>());
-            gravityFlag.add(new ArrayList<>());
+            gravityData.add(new ArrayDoubleList());
+            gravityFlag.add(new ArrayIntList());
             gravityFlag.get(i).add(0);
-            pastThreeExtremaX.add(new ArrayList<>());
-            pastThreeExtremaY.add(new ArrayList<>());
+            pastThreeExtremaX.add(new ArrayIntList());
+            pastThreeExtremaY.add(new ArrayDoubleList());
             fragments.add(new ArrayList<>());
         }
 
         representativeFragment = new Fragment();
-        reprFragmentOfAxis = new ArrayList<>();
+        reprFragmentOfAxis = new ArrayIntList();
         currentStepDates = new ArrayList<>();
         precedingStepDates = new ArrayList<>();
         i = 0;
@@ -105,10 +107,6 @@ public class StepCounter {
             for (int axis = 0; axis <= 2; axis++) {
                 // ... we apply the smoothing algorithm to this part for every axis
                 smoothSubgraph(gravityData.get(axis).subList(i-rT, i), gravityFlag.get(axis).subList(i-rT, i));
-                gravityData.get(axis).subList(i-rT, i).clear();
-                gravityData.get(axis).addAll(i-rT, processedPoints);
-                gravityFlag.get(axis).subList(i-rT, i).clear();
-                gravityFlag.get(axis).addAll(i-rT, processedFlags);
                 // Now we shift the point of consideration to the left, so that we only look at smoothed data -> (i-rT)
                 // If this smoothe point of consideration is a minima or maxima ...
                 if (gravityFlag.get(axis).get(i-rT)!= 0) {
@@ -117,10 +115,10 @@ public class StepCounter {
                     pastThreeExtremaY.get(axis).add(gravityData.get(axis).get(i-rT));
                     // If we have gathered three maxima or minima, we can build our first fragment
                     if (pastThreeExtremaX.get(axis).size() >= 3 ) {
-                        Fragment fragment = createFragment(pastThreeExtremaX.get(axis).toArray(new Integer[0]), pastThreeExtremaY.get(axis).toArray(new Double[0]), gravityFlag.get(axis).get(i-rT), axis);
+                        Fragment fragment = createFragment(pastThreeExtremaX.get(axis).toArray(), pastThreeExtremaY.get(axis).toArray(), gravityFlag.get(axis).get(i-rT), axis);
                         fragments.get(axis).add(fragment);
-                        pastThreeExtremaX.get(axis).remove(0);
-                        pastThreeExtremaY.get(axis).remove(0);
+                        pastThreeExtremaX.get(axis).removeElementAt(0);
+                        pastThreeExtremaY.get(axis).removeElementAt(0);
                     }
                     // Once we have collected three or more fragments, we can start to compare them (the last vs the third-last to compare the same type)
                     if (fragments.get(axis).size() >= 3) {
@@ -167,7 +165,7 @@ public class StepCounter {
     }
 
     // Based on three points, this method returns whether the point in the middle is a maxima (1), a minima(-1), or none (0)
-    private int setMinimaMaxima(List<Double> threePoints)  {
+    private int setMinimaMaxima(DoubleList threePoints)  {
         if (threePoints.get(0) < threePoints.get(1) && threePoints.get(2) <= threePoints.get(1)) {
             return 1;
         } else if (threePoints.get(0) > threePoints.get(1) && threePoints.get(2) >= threePoints.get(1)) {
@@ -179,44 +177,36 @@ public class StepCounter {
 
     // This function takes an array of datapoints (their y-values) and whether they are maxima, minima, or none to smooth the datapoints
     // Smoothing means that small distortions are removed while retaining the original height of maxima and minima
-    private void smoothSubgraph(List<Double> points, List<Integer> flags) {
-        processedPoints = new ArrayList<>(points);
-        processedFlags = new ArrayList<>(flags);
+    private void smoothSubgraph(DoubleList points, IntList flags) {
+        DoubleList rawPoints = new ArrayDoubleList(points);
         boolean foundExtreme = false;
         int firstExtremePos = 0;
 
-        for (int i = 0; i <= processedPoints.size()-1; i++) {
-            if (foundExtreme && processedFlags.get(i) == processedFlags.get(firstExtremePos)) {
-                processedPoints.subList(firstExtremePos+1, i).clear();
-                processedFlags.subList(firstExtremePos+1, i).clear();
+        for (int i = 0; i <= points.size()-1; i++) {
+            if (foundExtreme && flags.get(i) == flags.get(firstExtremePos)) {
+                points.subList(firstExtremePos+1, i).clear();
+                flags.subList(firstExtremePos+1, i).clear();
                 int lengthOfNewDataPoints = i-firstExtremePos-1;
-
-//                double[] newDataPoints = new double[lengthOfNewDataPoints];
-//                int[] newFlags = new int[lengthOfNewDataPoints];
-//                Arrays.fill(newDataPoints, (points.get(firstExtremePos) + points.get(i))/2);
-//                Arrays.fill(newFlags, 0);
-//                processedPoints.addElements(firstExtremePos+1, newDataPoints);
-//                processedFlags.addElements(firstExtremePos+1, newFlags);
-
-                processedPoints.addAll(firstExtremePos+1, Collections.nCopies(lengthOfNewDataPoints, (points.get(firstExtremePos) + points.get(i))/2));
-                processedFlags.addAll(firstExtremePos+1, Collections.nCopies(lengthOfNewDataPoints, 0));
-
-                if (processedFlags.get(i) == 1) {
-                    if (processedPoints.get(firstExtremePos) > processedPoints.get(i)) {
-                        processedFlags.set(i, 0);
+                for (int j = 0; j<lengthOfNewDataPoints; j++) {
+                    points.add(firstExtremePos+1, (rawPoints.get(firstExtremePos) + rawPoints.get(i))/2);
+                    flags.add(firstExtremePos+1, 0);
+                }
+                if (flags.get(i) == 1) {
+                    if (points.get(firstExtremePos) > points.get(i)) {
+                        flags.set(i, 0);
                     } else {
-                        processedFlags.set(firstExtremePos, 0);
+                        flags.set(firstExtremePos, 0);
                     }
                 } else {
-                    if (processedPoints.get(firstExtremePos) > processedPoints.get(i)) {
-                        processedFlags.set(firstExtremePos, 0);
+                    if (points.get(firstExtremePos) > points.get(i)) {
+                        flags.set(firstExtremePos, 0);
                     } else {
-                        processedFlags.set(i, 0);
+                        flags.set(i, 0);
                     }
                 }
                 return;
             }
-            if (!foundExtreme && processedFlags.get(i) != 0) {
+            if (!foundExtreme && flags.get(i) != 0) {
                 foundExtreme = true;
                 firstExtremePos = i;
             }
@@ -224,7 +214,7 @@ public class StepCounter {
     }
 
     // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
-    private Fragment createFragment(Integer[] xValues, Double[] yValues, int maxOrMin, int axis) {
+    private Fragment createFragment(int[] xValues, double[] yValues, int maxOrMin, int axis) {
         if (maxOrMin == 1) {
             return new Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Fragment.orders.MaxMinMax);
         } else {
