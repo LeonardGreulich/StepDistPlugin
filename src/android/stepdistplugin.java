@@ -85,17 +85,6 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
 
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Intent intent = new Intent();
-                String packageName = applicationContext.getPackageName();
-                PowerManager pm = (PowerManager) applicationContext.getSystemService(POWER_SERVICE);
-                if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                    intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + packageName));
-                    applicationContext.startActivity(intent);
-                }
-            }
-
             PluginResult pluginInfoResult = new PluginResult(PluginResult.Status.ERROR);
             pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
 

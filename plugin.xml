@@ -40,7 +40,7 @@
 		<config-file parent="/*" target="AndroidManifest.xml">
 			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 			<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-			<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+			<uses-permission android:name="android.permission.WAKE_LOCK" />
 			<uses-feature android:name="android.hardware.location.gps" />
 		</config-file>
         <config-file parent="/*/application" target="AndroidManifest.xml">

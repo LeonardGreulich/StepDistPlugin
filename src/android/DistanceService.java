@@ -19,6 +19,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.support.v4.app.NotificationCompat;
 
 import org.json.JSONException;
@@ -36,6 +38,8 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     private SensorManager sensorManager;
     private LocationManager locationManager;
+    private PowerManager powerManager;
+    private WakeLock wakeLock;
     private StepCounter stepCounter;
     private SharedPreferences preferences;
     private DistanceServiceDelegate delegate;
@@ -103,6 +107,10 @@ public class DistanceService extends Service implements LocationListener, Sensor
             securityException.printStackTrace();
         }
 
+        powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"StepDistPlugin:AllowStepCounting");
+        wakeLock.acquire();
+
         preferences = getSharedPreferences("sharedPreferences", Context.MODE_PRIVATE);
         isTracking = false;
         loadStepLength();
@@ -115,6 +123,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
     @Override
     public boolean onUnbind(Intent intent) {
         locationManager.removeUpdates(this);
+        wakeLock.release();
         return super.onUnbind(intent);
     }
 
