@@ -50,10 +50,6 @@
 		<source-file src="src/android/DistanceService.java" target-dir="src/cordova/plugin/stepdist/" />
 		<source-file src="src/android/StepCounter.java" target-dir="src/cordova/plugin/stepdist/" />
 		<source-file src="src/android/Fragment.java" target-dir="src/cordova/plugin/stepdist/" />
-		<source-file src="src/android/primitivelists/DoubleList.java" target-dir="src/cordova/plugin/stepdist/primitivelists/" />
-		<source-file src="src/android/primitivelists/IntList.java" target-dir="src/cordova/plugin/stepdist/primitivelists/" />
-		<source-file src="src/android/primitivelists/BooleanList.java" target-dir="src/cordova/plugin/stepdist/primitivelists/" />
 		<framework src="com.android.support:appcompat-v7:27.1.1" />
-		<framework src="it.unimi.dsi:fastutil:7.2.1" />
 	</platform>
 </plugin>
