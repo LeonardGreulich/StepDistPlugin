@@ -26,6 +26,7 @@ var Stepdistplugin = function() {
 
     document.addEventListener("pause", onPause, false);
     document.addEventListener("resume", onResume, false);
+    document.addEventListener("backbutton", onBackbuttonPressed, false);
 
     startLocalization();
 }
@@ -33,10 +34,10 @@ var Stepdistplugin = function() {
 var onTraveledDistanceHasSubscibersChange = function() {
     if (stepdistplugin.channels.distancetraveled.numHandlers === 1) {
         console.log("At least one traveled distance listener registered");
-        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", [])
+        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", []);
     } else if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
         console.log("No traveled distance listener registered");
-        exec(success, error, "stepdistplugin", "stopMeasuringDistance", [])
+        exec(success, error, "stepdistplugin", "stopMeasuringDistance", []);
     }
 }
 
@@ -52,6 +53,11 @@ var onResume = function() {
     if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
         startLocalization();
     }
+}
+
+var onBackbuttonPressed = function() {
+    console.log("On back button pressed");
+    // Do not close the app when pressing back (default behavior), as it could result in an accidental stop of the algorithm
 }
 
 var startLocalization = function() {

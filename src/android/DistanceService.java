@@ -1,7 +1,6 @@
 package cordova.plugin.stepdist;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -115,7 +114,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         isTracking = false;
         loadStepLength();
 
-        startForeground(1, buildNotification(0));
+        startForeground(1, buildNotification());
 
         return mBinder;
     }
@@ -127,12 +126,21 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return super.onUnbind(intent);
     }
 
-    private Notification buildNotification(int stepCount) {
+    private Notification buildNotification() {
         Intent notificationIntent = new Intent(this, getMainActivity());
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+        String applicationName;
+        int applicationNameIdentifier = getApplicationInfo().labelRes;
+        if (applicationNameIdentifier == 0) {
+            applicationName = getApplicationInfo().nonLocalizedLabel.toString();
+        } else {
+            applicationName = getString(applicationNameIdentifier);
+        }
+
         Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
-                .setContentTitle("Distance Service")
-                .setContentText("Steps: " + String.valueOf(stepCount))
+                .setContentTitle(applicationName)
+                .setContentText("Estimating your traveled distance.")
                 .setSmallIcon(getApplicationInfo().icon)
                 .setContentIntent(pendingIntent)
                 .build();
@@ -215,11 +223,6 @@ public class DistanceService extends Service implements LocationListener, Sensor
     public void stepCountDidChange(int count) {
         stepsTakenProvisional = count-stepsTakenPersistent;
         distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.notify(1, buildNotification(count));
-        }
 
         delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional, relativeAltitudeGain);
     }

@@ -7,11 +7,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.PowerManager;
-import android.provider.Settings;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -23,8 +20,6 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import static android.content.Context.POWER_SERVICE;
 
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
@@ -176,13 +171,6 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         pluginInfoResult.setKeepCallback(true);
 
         pluginInfoEventCallback.sendPluginResult(pluginInfoResult);
-    }
-
-    @Override
-    public void onDestroy() {
-        stopMeasuringDistance();
-        stopLocalization();
-        super.onDestroy();
     }
 
 }
