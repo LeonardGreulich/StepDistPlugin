@@ -87,7 +87,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         JSONObject stepCounterOptions = new JSONObject();
         try {
             stepCounterOptions.put("updateInterval", intent.getDoubleExtra("updateInterval", 0));
-            stepCounterOptions.put("betterFragmentFactor", intent.getDoubleExtra("betterFragmentFactor", 0));
+            stepCounterOptions.put("betterStrideFactor", intent.getDoubleExtra("betterStrideFactor", 0));
             stepCounterOptions.put("deviationLength", intent.getDoubleExtra("deviationLength", 0));
             stepCounterOptions.put("deviationAmplitude", intent.getDoubleExtra("deviationAmplitude", 0));
             stepCounterOptions.put("smoothingTimeframe", intent.getIntExtra("smoothingTimeframe", 0));

@@ -10,7 +10,7 @@ var distanceTraveledToCalibrate = 40;
 
 // Parameters for step-counting-based side of the algorithm
 var updateInterval = 0.1;
-var betterFragmentFactor = 1.2;
+var betterStrideFactor = 1.2;
 var deviationLength = 0.35;
 var deviationAmplitude = 0.35;
 var smoothingTimeframe = 8;
@@ -73,7 +73,7 @@ var startLocalization = function() {
         verticalAccuracyFilter: verticalAccuracyFilter,
         distanceTraveledToCalibrate: distanceTraveledToCalibrate,
         updateInterval: updateInterval,
-        betterFragmentFactor: betterFragmentFactor,
+        betterStrideFactor: betterStrideFactor,
         deviationLength: deviationLength,
         deviationAmplitude: deviationAmplitude,
         smoothingTimeframe: smoothingTimeframe

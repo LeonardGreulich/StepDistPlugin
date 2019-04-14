@@ -1,11 +1,11 @@
 //
-//  Fragment.swift
+//  Stride.swift
 //
 //  Created by Leo on 3/6/19.
 //  Copyright © 2019 Leonard Greulich. All rights reserved.
 //
 
-struct Fragment {
+struct Stride {
     enum orders {
         case MaxMinMax
         case MinMaxMin
@@ -19,7 +19,7 @@ struct Fragment {
     let lengthSecond: Int
     let lengthTotal: Int
     let axis: Int
-    let fragmentType: orders
+    let strideType: orders
     
     init() {
         self.heightMax = 0
@@ -29,10 +29,10 @@ struct Fragment {
         self.lengthSecond = 0
         self.lengthTotal = 0
         self.axis = 0
-        self.fragmentType = .none
+        self.strideType = .none
     }
     
-    init(_ heightMax: Double, _ heightMin: Double, _ lengthFirst: Int, _ lengthSecond: Int, _ axis: Int, _ fragmentType: orders) {
+    init(_ heightMax: Double, _ heightMin: Double, _ lengthFirst: Int, _ lengthSecond: Int, _ axis: Int, _ strideType: orders) {
         self.heightMax = heightMax
         self.heightMin = heightMin
         self.amplitude = heightMax - heightMin
@@ -40,10 +40,10 @@ struct Fragment {
         self.lengthSecond = lengthSecond
         self.lengthTotal = lengthFirst + lengthSecond
         self.axis = axis
-        self.fragmentType = fragmentType
+        self.strideType = strideType
     }
     
-    init(_ amplitude: Double, _ lengthTotal: Int, _ axis: Int, _ fragmentType: orders) {
+    init(_ amplitude: Double, _ lengthTotal: Int, _ axis: Int, _ strideType: orders) {
         self.heightMax = 0
         self.heightMin = 0
         self.amplitude = amplitude
@@ -51,6 +51,6 @@ struct Fragment {
         self.lengthSecond = 0
         self.lengthTotal = lengthTotal
         self.axis = axis
-        self.fragmentType = fragmentType
+        self.strideType = strideType
     }
 }

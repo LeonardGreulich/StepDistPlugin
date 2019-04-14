@@ -21,9 +21,9 @@ public class StepCounter {
 
     // Parameters
     private Double updateInterval; // Sets how often new data from the motion sensors should be received
-    private Double bFF; // Better fragment factor, when a newer fragment is regarded better
-    private Double dL; // Deviation length, allowed deviation in length to regard fragments as similar
-    private Double dA; // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
+    private Double bSF; // Better stride factor, when a newer stride is regarded better
+    private Double dL; // Deviation length, allowed deviation in length to regard strides as similar
+    private Double dA; // Deviation amplitude, allowed deviation in amplitude to regard strides as similar
     private Integer rT; // Smoothing timeframe
 
     // Raw gravity data and information about maxima and minima
@@ -31,19 +31,19 @@ public class StepCounter {
     private List<IntList> gravityFlag = new ArrayList<>();// Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
 
     // Supplementary variables
-    private Fragment representativeFragment = new Fragment(); // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
+    private Stride representativeStride = new Stride(); // Holds the representative stride as soon as one is found — every new incoming stride is compared to this one
     private List<IntList> pastThreeExtremaX = new ArrayList<>(); // Hold the x values of the past three extrema
     private List<DoubleList> pastThreeExtremaY = new ArrayList<>(); // Holds the y values of the past three extrema
-    private List<List<Fragment>> fragments = new ArrayList<>(); // Holds all found fragments
-    private List<List<Boolean>> similarities = new ArrayList<>(); // Holds all information of comparison of fragments and whether they are similar or not
-    private IntList reprFragmentOfAxis = new ArrayIntList();
+    private List<List<Stride>> strides = new ArrayList<>(); // Holds all found strides
+    private List<List<Boolean>> similarities = new ArrayList<>(); // Holds all information of comparison of strides and whether they are similar or not
+    private IntList reprStrideOfAxis = new ArrayIntList();
     private Integer i = 0;
     private List<Date> currentStepDates = new ArrayList<>();
     private List<Date> precedingStepDates = new ArrayList<>();
 
     public StepCounter(Context applicationContext, JSONObject options) throws JSONException {
         updateInterval = options.getDouble("updateInterval");
-        bFF = options.getDouble("betterFragmentFactor");
+        bSF = options.getDouble("betterStrideFactor");
         dL = options.getDouble("deviationLength");
         dA = options.getDouble("deviationAmplitude");
         rT = options.getInt("smoothingTimeframe");
@@ -57,7 +57,7 @@ public class StepCounter {
         // Second, reset supplementary variables
         pastThreeExtremaX = new ArrayList<>();
         pastThreeExtremaY = new ArrayList<>();
-        fragments = new ArrayList<>();
+        strides = new ArrayList<>();
 
         // Fill two-dimensional lists with empty lists
         for (int i = 0; i <= 2; i++) {
@@ -66,11 +66,11 @@ public class StepCounter {
             gravityFlag.get(i).add(0);
             pastThreeExtremaX.add(new ArrayIntList());
             pastThreeExtremaY.add(new ArrayDoubleList());
-            fragments.add(new ArrayList<>());
+            strides.add(new ArrayList<>());
         }
 
-        representativeFragment = new Fragment();
-        reprFragmentOfAxis = new ArrayIntList();
+        representativeStride = new Stride();
+        reprStrideOfAxis = new ArrayIntList();
         currentStepDates = new ArrayList<>();
         precedingStepDates = new ArrayList<>();
         i = 0;
@@ -110,37 +110,37 @@ public class StepCounter {
                     // ... append it to the respective array
                     pastThreeExtremaX.get(axis).add(i-rT);
                     pastThreeExtremaY.get(axis).add(gravityData.get(axis).get(i-rT));
-                    // If we have gathered three maxima or minima, we can build our first fragment
+                    // If we have gathered three maxima or minima, we can build our first stride
                     if (pastThreeExtremaX.get(axis).size() >= 3 ) {
-                        Fragment fragment = createFragment(pastThreeExtremaX.get(axis).toArray(), pastThreeExtremaY.get(axis).toArray(), gravityFlag.get(axis).get(i-rT), axis);
-                        fragments.get(axis).add(fragment);
+                        Stride stride = createStride(pastThreeExtremaX.get(axis).toArray(), pastThreeExtremaY.get(axis).toArray(), gravityFlag.get(axis).get(i-rT), axis);
+                        strides.get(axis).add(stride);
                         pastThreeExtremaX.get(axis).removeElementAt(0);
                         pastThreeExtremaY.get(axis).removeElementAt(0);
                     }
-                    // Once we have collected three or more fragments, we can start to compare them (the last vs the third-last to compare the same type)
-                    if (fragments.get(axis).size() >= 3) {
-                        similarities.get(axis).add(areFragmentsSimilar(fragments.get(axis).get(fragments.get(axis).size()-3), fragments.get(axis).get(fragments.get(axis).size()-1)));
+                    // Once we have collected three or more strides, we can start to compare them (the last vs the third-last to compare the same type)
+                    if (strides.get(axis).size() >= 3) {
+                        similarities.get(axis).add(areStridesSimilar(strides.get(axis).get(strides.get(axis).size()-3), strides.get(axis).get(strides.get(axis).size()-1)));
                     }
                     // Finally, if we have collected the results of 5 or more comparisons, we can check if there is a pattern and, perhaps, ...
-                    // ... set the representative fragment (or change it if we find a better one)
-                    if (!reprFragmentOfAxis.contains(axis) && similarities.get(axis).size() >= 5) {
+                    // ... set the representative stride (or change it if we find a better one)
+                    if (!reprStrideOfAxis.contains(axis) && similarities.get(axis).size() >= 5) {
                         if (similarities.get(axis).get(similarities.get(axis).size()-5) && similarities.get(axis).get(similarities.get(axis).size()-3) && similarities.get(axis).get(similarities.get(axis).size()-1)) {
-                            if (fragments.get(axis).get(fragments.get(axis).size()-1).amplitude > representativeFragment.amplitude*bFF) {
-                                representativeFragment = createRepresentativeFragment(new Fragment[] {fragments.get(axis).get(fragments.get(axis).size()-5), fragments.get(axis).get(fragments.get(axis).size()-3), fragments.get(axis).get(fragments.get(axis).size()-1)});
-                                reprFragmentOfAxis.add(axis);
-                                initializeStepDates(representativeFragment, 6);
+                            if (strides.get(axis).get(strides.get(axis).size()-1).amplitude > representativeStride.amplitude*bSF) {
+                                representativeStride = createRepresentativeStride(new Stride[] {strides.get(axis).get(strides.get(axis).size()-5), strides.get(axis).get(strides.get(axis).size()-3), strides.get(axis).get(strides.get(axis).size()-1)});
+                                reprStrideOfAxis.add(axis);
+                                initializeStepDates(representativeStride, 6);
                             }
                         }
                     }
-                    // After we have found a representative fragment we compare new incoming fragments of the same axis to it and possibly increase the counter
-                    // If there is no similarity, we re-initialize the representative fragment and similarities to look for a new pattern
-                    if (reprFragmentOfAxis.size() != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments.get(axis).get(fragments.get(axis).size()-1).fragmentType) {
-                        if (areFragmentsSimilar(representativeFragment, fragments.get(axis).get(fragments.get(axis).size()-1))) {
-                            addStepDates(fragments.get(axis).get(fragments.get(axis).size()-1), 2);
-                            delegate.stepCountDidChange(getStepsTotal(), getStepsPerSecond(fragments.get(axis).get(fragments.get(axis).size()-1)));
+                    // After we have found a representative stride we compare new incoming strides of the same axis to it and possibly increase the counter
+                    // If there is no similarity, we re-initialize the representative stride and similarities to look for a new pattern
+                    if (reprStrideOfAxis.size() != 0 && representativeStride.axis == axis && representativeStride.strideType == strides.get(axis).get(strides.get(axis).size()-1).strideType) {
+                        if (areStridesSimilar(representativeStride, strides.get(axis).get(strides.get(axis).size()-1))) {
+                            addStepDates(strides.get(axis).get(strides.get(axis).size()-1), 2);
+                            delegate.stepCountDidChange(getStepsTotal(), getStepsPerSecond(strides.get(axis).get(strides.get(axis).size()-1)));
                         } else {
-                            representativeFragment = new Fragment();
-                            reprFragmentOfAxis.clear();
+                            representativeStride = new Stride();
+                            reprStrideOfAxis.clear();
                             clearSimilarities();
                             precedingStepDates.addAll(new ArrayList<>(currentStepDates));
                             currentStepDates.clear();
@@ -148,13 +148,13 @@ public class StepCounter {
                     }
                 }
             }
-            // If the phone moves slowly in the pocket it may happen that another axis fulfils the betterFragmentFactor at some time
+            // If the phone moves slowly in the pocket it may happen that another axis fulfils the betterStrideFactor at some time
             // To avoid that previous steps are overwritten, prevent that a better axis is found after 15 steps
-            // If a fragment does not fit the representative fragment after a phone movement in the pocket, a new pattern is searched in all axes again in the code above
+            // If a stride does not fit the representative stride after a phone movement in the pocket, a new pattern is searched in all axes again in the code above
             if (currentStepDates.size() >= 15) {
-                reprFragmentOfAxis.add(0);
-                reprFragmentOfAxis.add(1);
-                reprFragmentOfAxis.add(2);
+                reprStrideOfAxis.add(0);
+                reprStrideOfAxis.add(1);
+                reprStrideOfAxis.add(2);
             }
         }
 
@@ -210,28 +210,28 @@ public class StepCounter {
         }
     }
 
-    // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
-    private Fragment createFragment(int[] xValues, double[] yValues, int maxOrMin, int axis) {
+    // Helper function to create a new stride. The if-else block distinguished between a max-min-max and a min-max-min stride
+    private Stride createStride(int[] xValues, double[] yValues, int maxOrMin, int axis) {
         if (maxOrMin == 1) {
-            return new Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Fragment.orders.MaxMinMax);
+            return new Stride((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Stride.orders.MaxMinMax);
         } else {
-            return new Fragment(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Fragment.orders.MinMaxMin);
+            return new Stride(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, Stride.orders.MinMaxMin);
         }
     }
 
-    // Helper function to create a representative fragment that is composed of the average values of similar fragments
-    private Fragment createRepresentativeFragment(Fragment[] fragments) {
-        double amplitudeTotal = fragments[0].amplitude+fragments[1].amplitude+fragments[2].amplitude;
-        int lengthTotal = fragments[0].lengthTotal+fragments[1].lengthTotal+fragments[2].lengthTotal;
+    // Helper function to create a representative stride that is composed of the average values of similar strides
+    private Stride createRepresentativeStride(Stride[] strides) {
+        double amplitudeTotal = strides[0].amplitude+strides[1].amplitude+strides[2].amplitude;
+        int lengthTotal = strides[0].lengthTotal+strides[1].lengthTotal+strides[2].lengthTotal;
         double amplitudesMean = amplitudeTotal/3;
         int lengthsMean = (int) Math.round(lengthTotal/(double) 3);
 
-        return new Fragment(amplitudesMean, lengthsMean, fragments[0].axis, fragments[0].fragmentType);
+        return new Stride(amplitudesMean, lengthsMean, strides[0].axis, strides[0].strideType);
     }
 
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
-    // Function considers the time shift caused by the smoothing algorithm and considers the fact that one fragment represents two steps
-    private void initializeStepDates(Fragment fragment, int numberOfSteps) {
+    // Function considers the time shift caused by the smoothing algorithm and considers the fact that one stride represents two steps
+    private void initializeStepDates(Stride stride, int numberOfSteps) {
         Date currentDate = new Date();
 
         // Clear the stepDates array
@@ -241,9 +241,9 @@ public class StepCounter {
         double rTInSeconds = updateInterval* (double) rT;
         currentDate.setTime(currentDate.getTime()-(long) rTInSeconds*1000);
 
-        // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
+        // Each stride represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         // Also, subtract one additional stepLengthInSeconds to compensate for the fact that the most recent stride does not belong to the steps in this method
-        double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
+        double stepLengthInSeconds = (double) stride.lengthTotal*updateInterval/2;
         currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
         for (int i=0; i < numberOfSteps; i++) {
             currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
@@ -252,7 +252,7 @@ public class StepCounter {
     }
 
     // Helper function to add step dates to the stepDates array, similar to the initializeStepDates but for the most recent ones
-    private void addStepDates(Fragment fragment, int numberOfSteps) {
+    private void addStepDates(Stride stride, int numberOfSteps) {
         Date currentDate = new Date();
 
         // Subtract the time shift caused by the smoothing algorithm and add the last found step right away
@@ -260,18 +260,18 @@ public class StepCounter {
         currentDate.setTime(currentDate.getTime()-(long) rTInSeconds*1000);
         currentStepDates.add(new Date(currentDate.getTime()));
 
-        // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
-        double stepLengthInSeconds = (double) fragment.lengthTotal*updateInterval/2;
+        // Each stride represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
+        double stepLengthInSeconds = (double) stride.lengthTotal*updateInterval/2;
         for (int i=0; i < numberOfSteps-1; i++) {
             currentDate.setTime(currentDate.getTime()-(long) stepLengthInSeconds*1000);
             currentStepDates.add(new Date(currentDate.getTime()));
         }
     }
 
-    // Compares two fragments and returns a boolean indicating whether they are similar or not
-    private boolean areFragmentsSimilar(Fragment fragmentOne, Fragment fragmentTwo) {
-        double diffLength = (double) abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal)/ (double) fragmentOne.lengthTotal;
-        double diffAmplitude = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude;
+    // Compares two strides and returns a boolean indicating whether they are similar or not
+    private boolean areStridesSimilar(Stride strideOne, Stride strideTwo) {
+        double diffLength = (double) abs(strideOne.lengthTotal - strideTwo.lengthTotal)/ (double) strideOne.lengthTotal;
+        double diffAmplitude = abs(strideOne.amplitude - strideTwo.amplitude)/strideOne.amplitude;
 
         return (diffLength <= dL && diffAmplitude <= dA);
     }
@@ -313,9 +313,9 @@ public class StepCounter {
         return getStepsBetween(startDate15Seconds, endDate15Seconds)*4;
     }
 
-    // Returns the current step frequency based on a fragment
-    private float getStepsPerSecond(Fragment fragment) {
-        double stepDurationInSeconds = fragment.lengthTotal*updateInterval*0.5;
+    // Returns the current step frequency based on a stride
+    private float getStepsPerSecond(Stride stride) {
+        double stepDurationInSeconds = stride.lengthTotal*updateInterval*0.5;
 
         return (float) (1/stepDurationInSeconds);
     }

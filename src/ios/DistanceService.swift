@@ -48,7 +48,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
             let distanceTraveledToCalibrate = options["distanceTraveledToCalibrate"] as? Double,
             let updateInterval = options["updateInterval"] as? Double,
-            let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
+            let betterStrideFactor = options["betterStrideFactor"] as? Double,
             let deviationLength = options["deviationLength"] as? Double,
             let deviationAmplitude = options["deviationAmplitude"] as? Double,
             let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
@@ -61,7 +61,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             
             // Prepare dictionary with step counter parameters
             stepCounterOptions = ["updateInterval": updateInterval,
-                                  "betterFragmentFactor": betterFragmentFactor,
+                                  "betterStrideFactor": betterStrideFactor,
                                   "deviationLength": deviationLength,
                                   "deviationAmplitude": deviationAmplitude,
                                   "smoothingTimeframe": smoothingTimeframe]

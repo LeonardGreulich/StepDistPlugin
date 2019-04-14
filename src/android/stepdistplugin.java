@@ -101,7 +101,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         serviceIntent.putExtra("verticalAccuracyFilter", options.getDouble("verticalAccuracyFilter"));
         serviceIntent.putExtra("distanceTraveledToCalibrate", options.getDouble("distanceTraveledToCalibrate"));
         serviceIntent.putExtra("updateInterval", options.getDouble("updateInterval"));
-        serviceIntent.putExtra("betterFragmentFactor", options.getDouble("betterFragmentFactor"));
+        serviceIntent.putExtra("betterStrideFactor", options.getDouble("betterStrideFactor"));
         serviceIntent.putExtra("deviationLength", options.getDouble("deviationLength"));
         serviceIntent.putExtra("deviationAmplitude", options.getDouble("deviationAmplitude"));
         serviceIntent.putExtra("smoothingTimeframe", options.getInt("smoothingTimeframe"));

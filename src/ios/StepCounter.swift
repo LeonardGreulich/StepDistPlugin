@@ -15,9 +15,9 @@ class StepCounter {
     
     // Parameters
     private var updateInterval: Double! // Sets how often new data from the motion sensors should be received
-    private var bFF: Double! // Better fragment factor, when a newer fragment is regarded better
-    private var dL: Double! // Deviation length, allowed deviation in length to regard fragments as similar
-    private var dA: Double! // Deviation amplitude, allowed deviation in amplitude to regard fragments as similar
+    private var bSF: Double! // Better stride factor, when a newer stride is regarded better
+    private var dL: Double! // Deviation length, allowed deviation in length to regard strides as similar
+    private var dA: Double! // Deviation amplitude, allowed deviation in amplitude to regard strides as similar
     private var rT: Int! // Smoothing timeframe
     
     // Raw gravity data and information about maxima and minima
@@ -25,24 +25,24 @@ class StepCounter {
     private var gravityFlag: [[Int8]] = [[0], [0], [0]] // Two dimensional array that holds for each gravity point whether its a maxima (1), a minima(-1), or none (0)
     
     // Supplementary variables
-    private var representativeFragment: Fragment! // Holds the representative fragment as soon as one is found — every new incoming fragment is compared to this one
+    private var representativeStride: Stride! // Holds the representative stride as soon as one is found — every new incoming stride is compared to this one
     private var pastThreeExtremaX: [[Int]] = [[], [], []] // Hold the x values of the past three extrema
     private var pastThreeExtremaY: [[Double]] = [[], [], []] // Holds the y values of the past three extrema
-    private var fragments: [[Fragment]] = [[], [], []] // Holds all found fragments
-    private var similarities: [[Bool]] = [[], [], []] // Holds all information of comparison of fragments and whether they are similar or not
-    private var reprFragmentOfAxis: [Int] = [] // If a representative fragment has been found, its axis is appended to this array
+    private var strides: [[Stride]] = [[], [], []] // Holds all found strides
+    private var similarities: [[Bool]] = [[], [], []] // Holds all information of comparison of strides and whether they are similar or not
+    private var reprStrideOfAxis: [Int] = [] // If a representative stride has been found, its axis is appended to this array
     private var i: Int = 0 // Simple running index to performantly know how many data points has been stored and processed
     private var currentStepDates: [Date] = [] // Holds the date and time for each currently found step
     private var precedingStepDates: [Date] = [] // Holds the date and time for each previously found step
     
     init(_ options: [String: Any]) {
         if let updateInterval = options["updateInterval"] as? Double,
-        let betterFragmentFactor = options["betterFragmentFactor"] as? Double,
+        let betterStrideFactor = options["betterStrideFactor"] as? Double,
         let deviationLength = options["deviationLength"] as? Double,
         let deviationAmplitude = options["deviationAmplitude"] as? Double,
         let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
             self.updateInterval = updateInterval
-            self.bFF = betterFragmentFactor
+            self.bSF = betterStrideFactor
             self.dL = deviationLength
             self.dA = deviationAmplitude
             self.rT = smoothingTimeframe
@@ -78,12 +78,12 @@ class StepCounter {
         gravityFlag = [[0], [0], [0]]
         
         // Second, reset supplementary variables
-        representativeFragment = Fragment()
+        representativeStride = Stride()
         pastThreeExtremaX = [[], [], []]
         pastThreeExtremaY = [[], [], []]
-        fragments = [[], [], []]
+        strides = [[], [], []]
         similarities = [[], [], []]
-        reprFragmentOfAxis = []
+        reprStrideOfAxis = []
         i = 0
         currentStepDates = []
         precedingStepDates = []
@@ -116,37 +116,37 @@ class StepCounter {
                     // ... append it to the respective array
                     pastThreeExtremaX[axis].append(i-rT)
                     pastThreeExtremaY[axis].append(gravityData[axis][i-rT])
-                    // If we have gathered three maxima or minima, we can build our first fragment
+                    // If we have gathered three maxima or minima, we can build our first stride
                     if pastThreeExtremaX[axis].count >= 3 {
-                        let fragment: Fragment = createFragment(pastThreeExtremaX[axis], pastThreeExtremaY[axis], gravityFlag[axis][i-rT], axis)
-                        fragments[axis].append(fragment)
+                        let stride: Stride = createStride(pastThreeExtremaX[axis], pastThreeExtremaY[axis], gravityFlag[axis][i-rT], axis)
+                        strides[axis].append(stride)
                         pastThreeExtremaX[axis].removeFirst()
                         pastThreeExtremaY[axis].removeFirst()
                     }
-                    // Once we have collected three or more fragments, we can start to compare them (the last vs the third-last to compare the same type)
-                    if fragments[axis].count >= 3 {
-                        similarities[axis].append(areFragmentsSimilar(fragments[axis][fragments[axis].count-3], fragments[axis][fragments[axis].count-1]))
+                    // Once we have collected three or more strides, we can start to compare them (the last vs the third-last to compare the same type)
+                    if strides[axis].count >= 3 {
+                        similarities[axis].append(areStridesSimilar(strides[axis][strides[axis].count-3], strides[axis][strides[axis].count-1]))
                     }
                     // Finally, if we have collected the results of 5 or more comparisons, we can check if there is a pattern and, perhaps, ...
-                    // ... set the representative fragment (or change it if we find a better one)
-                    if !reprFragmentOfAxis.contains(axis) && similarities[axis].count >= 5 {
+                    // ... set the representative stride (or change it if we find a better one)
+                    if !reprStrideOfAxis.contains(axis) && similarities[axis].count >= 5 {
                         if similarities[axis][similarities[axis].count-5] && similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
-                            if fragments[axis][fragments[axis].count-1].amplitude > representativeFragment.amplitude*bFF {
-                                representativeFragment = createRepresentativeFragment([fragments[axis][fragments[axis].count-5], fragments[axis][fragments[axis].count-3], fragments[axis][fragments[axis].count-1]])
-                                reprFragmentOfAxis.append(axis)
-                                initializeStepDates(representativeFragment, 6)
+                            if strides[axis][strides[axis].count-1].amplitude > representativeStride.amplitude*bSF {
+                                representativeStride = createRepresentativeStride([strides[axis][strides[axis].count-5], strides[axis][strides[axis].count-3], strides[axis][strides[axis].count-1]])
+                                reprStrideOfAxis.append(axis)
+                                initializeStepDates(representativeStride, 6)
                             }
                         }
                     }
-                    // After we have found a representative fragment we compare new incoming fragments of the same axis to it and possibly increase the counter
-                    // If there is no similarity, we re-initialize the representative fragment and similarities to look for a new pattern
-                    if reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType {
-                        if areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
-                            addStepDates(fragments[axis][fragments[axis].count-1], 2)
-                            delegate.stepCountDidChange(manager: self, count: getStepsTotal(), frequency: getStepsPerSecond(fragment: fragments[axis][fragments[axis].count-1]))
+                    // After we have found a representative stride we compare new incoming strides of the same axis to it and possibly increase the counter
+                    // If there is no similarity, we re-initialize the representative stride and similarities to look for a new pattern
+                    if reprStrideOfAxis.count != 0 && representativeStride.axis == axis && representativeStride.strideType == strides[axis][strides[axis].count-1].strideType {
+                        if areStridesSimilar(representativeStride, strides[axis][strides[axis].count-1]) {
+                            addStepDates(strides[axis][strides[axis].count-1], 2)
+                            delegate.stepCountDidChange(manager: self, count: getStepsTotal(), frequency: getStepsPerSecond(stride: strides[axis][strides[axis].count-1]))
                         } else {
-                            representativeFragment = Fragment()
-                            reprFragmentOfAxis = []
+                            representativeStride = Stride()
+                            reprStrideOfAxis = []
                             similarities = [[], [], []]
                             precedingStepDates.append(contentsOf: currentStepDates)
                             currentStepDates.removeAll()
@@ -154,11 +154,11 @@ class StepCounter {
                     }
                 }
             }
-            // If the phone moves slowly in the pocket it may happen that another axis fulfils the betterFragmentFactor at some time
+            // If the phone moves slowly in the pocket it may happen that another axis fulfils the betterStrideFactor at some time
             // To avoid that previous steps are overwritten, prevent that a better axis is found after 15 steps
-            // If a fragment does not fit the representative fragment after a phone movement in the pocket, a new pattern is searched in all axes again in the code above
+            // If a stride does not fit the representative stride after a phone movement in the pocket, a new pattern is searched in all axes again in the code above
             if currentStepDates.count >= 15 {
-                reprFragmentOfAxis = [0, 1, 2]
+                reprStrideOfAxis = [0, 1, 2]
             }
         }
         
@@ -211,38 +211,38 @@ class StepCounter {
         return (processedPoints, processedFlags)
     }
     
-    // Helper function to create a new fragment. The if-else block distinguished between a max-min-max and a min-max-min fragment
-    private func createFragment(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Fragment {
+    // Helper function to create a new stride. The if-else block distinguished between a max-min-max and a min-max-min stride
+    private func createStride(_ xValues: [Int], _ yValues: [Double], _ maxOrMin: Int8, _ axis: Int) -> Stride {
         if maxOrMin == 1 {
-            return Fragment((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MaxMinMax)
+            return Stride((yValues[0] + yValues[2])/2, yValues[1], xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MaxMinMax)
         } else {
-            return Fragment(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MinMaxMin)
+            return Stride(yValues[1], (yValues[0] + yValues[2])/2, xValues[1] - xValues[0], xValues[2] - xValues[1], axis, .MinMaxMin)
         }
     }
     
-    // Helper function to create a representative fragment that is composed of the average values of similar fragments
-    private func createRepresentativeFragment(_ fragments: [Fragment]) -> Fragment {
-        let axes: [Int] = fragments.map { $0.axis }
+    // Helper function to create a representative stride that is composed of the average values of similar strides
+    private func createRepresentativeStride(_ strides: [Stride]) -> Stride {
+        let axes: [Int] = strides.map { $0.axis }
         guard !axes.contains(where: { $0 != axes.first! }) else {
-            return Fragment()
+            return Stride()
         }
         
-        let fragmentTypes: [Fragment.orders] = fragments.map { $0.fragmentType }
-        guard !fragmentTypes.contains(where: { $0 != fragmentTypes.first! }) else {
-            return Fragment()
+        let strideTypes: [Stride.orders] = strides.map { $0.strideType }
+        guard !strideTypes.contains(where: { $0 != strideTypes.first! }) else {
+            return Stride()
         }
         
-        let amplitudes: [Double] = fragments.map { $0.amplitude }
-        let lengths: [Int] = fragments.map { $0.lengthTotal }
+        let amplitudes: [Double] = strides.map { $0.amplitude }
+        let lengths: [Int] = strides.map { $0.lengthTotal }
         let amplitudesMean: Double = amplitudes.reduce(0, +) / Double(amplitudes.count)
         let lengthsMean: Int = Int(round(Double(lengths.reduce(0, +)) / Double(lengths.count)))
         
-        return Fragment(amplitudesMean, lengthsMean, axes.first!, fragmentTypes.first!)
+        return Stride(amplitudesMean, lengthsMean, axes.first!, strideTypes.first!)
     }
     
     // Helper function to populate the stepDates array with the dates of all found steps, but not for the most recent ones
-    // Function considers the time shift caused by the smoothing algorithm and considers the fact that one fragment represents two steps
-    private func initializeStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
+    // Function considers the time shift caused by the smoothing algorithm and considers the fact that one stride represents two steps
+    private func initializeStepDates(_ stride: Stride, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
         
         // Clear the stepDates array
@@ -252,9 +252,9 @@ class StepCounter {
         let rTInSeconds: Double = updateInterval*Double(rT);
         currentDate.addTimeInterval(-rTInSeconds)
         
-        // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
+        // Each stride represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
         // Also, subtract one additional stepLengthInSeconds to compensate for the fact that the most recent stride does not belong to the steps in this method
-        let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
+        let stepLengthInSeconds: Double = Double(stride.lengthTotal)*updateInterval/2
         currentDate.addTimeInterval(-stepLengthInSeconds)
         for _ in 0...numberOfSteps-1 {
             currentDate.addTimeInterval(-stepLengthInSeconds)
@@ -263,7 +263,7 @@ class StepCounter {
     }
     
     // Helper function to add step dates to the stepDates array, similar to the initializeStepDates but for the most recent ones
-    private func addStepDates(_ fragment: Fragment, _ numberOfSteps: Int) {
+    private func addStepDates(_ stride: Stride, _ numberOfSteps: Int) {
         var currentDate: Date = Date()
         
         // Subtract the time shift caused by the smoothing algorithm and add the last found step right away
@@ -271,18 +271,18 @@ class StepCounter {
         currentDate.addTimeInterval(-rTInSeconds)
         currentStepDates.append(currentDate)
         
-        // Each fragment represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
-        let stepLengthInSeconds: Double = Double(fragment.lengthTotal)*updateInterval/2
+        // Each stride represents two steps, which equaly one stride. Assume that the length of one step is half of the stride
+        let stepLengthInSeconds: Double = Double(stride.lengthTotal)*updateInterval/2
         for _ in 0...numberOfSteps-2 {
             currentDate.addTimeInterval(-stepLengthInSeconds)
             currentStepDates.append(currentDate)
         }
     }
     
-    // Compares two fragments and returns a boolean indicating whether they are similar or not
-    private func areFragmentsSimilar(_ fragmentOne: Fragment, _ fragmentTwo: Fragment) -> Bool {
-        let diffLength: Double = Double(abs(fragmentOne.lengthTotal - fragmentTwo.lengthTotal))/Double(fragmentOne.lengthTotal)
-        let diffAmplitude: Double = abs(fragmentOne.amplitude - fragmentTwo.amplitude)/fragmentOne.amplitude
+    // Compares two strides and returns a boolean indicating whether they are similar or not
+    private func areStridesSimilar(_ strideOne: Stride, _ strideTwo: Stride) -> Bool {
+        let diffLength: Double = Double(abs(strideOne.lengthTotal - strideTwo.lengthTotal))/Double(strideOne.lengthTotal)
+        let diffAmplitude: Double = abs(strideOne.amplitude - strideTwo.amplitude)/strideOne.amplitude
         
         return (diffLength <= dL && diffAmplitude <= dA)
     }
@@ -310,9 +310,9 @@ class StepCounter {
         return getStepsBetween(startDate: startDate15Seconds, endDate: endDate15Seconds)*4
     }
     
-    // Returns the current step frequency based on a fragment
-    func getStepsPerSecond(fragment: Fragment) -> Double {
-        let stepDurationInSeconds: Double = Double(fragment.lengthTotal)*updateInterval*0.5
+    // Returns the current step frequency based on a stride
+    func getStepsPerSecond(stride: Stride) -> Double {
+        let stepDurationInSeconds: Double = Double(stride.lengthTotal)*updateInterval*0.5
         
         return 1/stepDurationInSeconds
     }

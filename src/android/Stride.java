@@ -1,6 +1,6 @@
 package cordova.plugin.stepdist;
 
-public class Fragment {
+public class Stride {
 
     enum orders {
         MaxMinMax, MinMaxMin, none
@@ -13,9 +13,9 @@ public class Fragment {
     Integer lengthSecond;
     Integer lengthTotal;
     Integer axis;
-    orders fragmentType;
+    orders strideType;
 
-    public Fragment() {
+    public Stride() {
         this.heightMax = 0.0;
         this.heightMin = 0.0;
         this.amplitude = 0.0;
@@ -23,10 +23,10 @@ public class Fragment {
         this.lengthSecond = 0;
         this.lengthTotal = 0;
         this.axis = 0;
-        this.fragmentType = orders.none;
+        this.strideType = orders.none;
     }
 
-    public Fragment(Double heightMax, Double heightMin, Integer lengthFirst, Integer lengthSecond, Integer axis, orders fragmentType) {
+    public Stride(Double heightMax, Double heightMin, Integer lengthFirst, Integer lengthSecond, Integer axis, orders strideType) {
         this.heightMax = heightMax;
         this.heightMin = heightMin;
         this.amplitude = heightMax - heightMin;
@@ -34,10 +34,10 @@ public class Fragment {
         this.lengthSecond = lengthSecond;
         this.lengthTotal = lengthFirst + lengthSecond;
         this.axis = axis;
-        this.fragmentType = fragmentType;
+        this.strideType = strideType;
     }
 
-    public Fragment(Double amplitude, Integer lengthTotal, Integer axis, orders fragmentType) {
+    public Stride(Double amplitude, Integer lengthTotal, Integer axis, orders strideType) {
         this.heightMax = 0.0;
         this.heightMin = 0.0;
         this.amplitude = amplitude;
@@ -45,6 +45,6 @@ public class Fragment {
         this.lengthSecond = 0;
         this.lengthTotal = lengthTotal;
         this.axis = axis;
-        this.fragmentType = fragmentType;
+        this.strideType = strideType;
     }
 }
