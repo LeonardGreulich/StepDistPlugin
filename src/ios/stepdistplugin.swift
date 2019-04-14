@@ -100,9 +100,9 @@
     func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
-            messageAs: ["distanceTraveled": distanceTraveled,
-                        "stepsTaken": stepsTaken,
-                        "relativeAltitudeGain": relativeAltitudeGain]
+            messageAs: ["distance": distanceTraveled,
+                        "steps": stepsTaken,
+                        "elevation": relativeAltitudeGain]
         )
         pluginResult?.setKeepCallbackAs(true)
         

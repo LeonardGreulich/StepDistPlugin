@@ -99,7 +99,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         serviceIntent.putExtra("horizontalAccuracyFilter", options.getDouble("horizontalAccuracyFilter"));
         serviceIntent.putExtra("verticalDistanceFilter", options.getInt("verticalDistanceFilter"));
         serviceIntent.putExtra("verticalAccuracyFilter", options.getDouble("verticalAccuracyFilter"));
-        serviceIntent.putExtra("distanceTraveledToCalibrate", options.getDouble("distanceTraveledToCalibrate"));
+        serviceIntent.putExtra("distanceWalkedToCalibrate", options.getDouble("distanceWalkedToCalibrate"));
         serviceIntent.putExtra("updateInterval", options.getDouble("updateInterval"));
         serviceIntent.putExtra("betterStrideFactor", options.getDouble("betterStrideFactor"));
         serviceIntent.putExtra("deviationLength", options.getDouble("deviationLength"));
@@ -165,9 +165,9 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     public void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain) {
         JSONObject distanceInfo = new JSONObject();
         try {
-            distanceInfo.put("distanceTraveled", distanceTraveled);
-            distanceInfo.put("stepsTaken", stepsTaken);
-            distanceInfo.put("relativeAltitudeGain", relativeAltitudeGain);
+            distanceInfo.put("distance", distanceTraveled);
+            distanceInfo.put("steps", stepsTaken);
+            distanceInfo.put("elevation", relativeAltitudeGain);
         } catch (JSONException e) {
             System.out.println("Error distanceInfo");
         }

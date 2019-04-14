@@ -52,7 +52,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private double horizontalAccuracyFilter;
     private int verticalDistanceFilter;
     private double verticalAccuracyFilter;
-    private double distanceTraveledToCalibrate;
+    private double distanceWalkedToCalibrate;
 
     private float stepLength;
     private float bodyHeight;
@@ -81,7 +81,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         horizontalAccuracyFilter = intent.getDoubleExtra("horizontalAccuracyFilter", 0);
         verticalDistanceFilter = intent.getIntExtra("verticalDistanceFilter", 0);
         verticalAccuracyFilter = intent.getDoubleExtra("verticalAccuracyFilter", 0);
-        distanceTraveledToCalibrate = intent.getDoubleExtra("distanceTraveledToCalibrate", 0);
+        distanceWalkedToCalibrate = intent.getDoubleExtra("distanceWalkedToCalibrate", 0);
         sensorUpdateInterval = intent.getDoubleExtra("updateInterval", 0);
 
         JSONObject stepCounterOptions = new JSONObject();
@@ -254,7 +254,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private void processLocationEvent(Location location) {
         if (locationEvents.size() >= 3 && enableGPSCalibration) {
             calibrationCandidateDistance = calculateCumulativeDistance(locationEvents.subList(1, locationEvents.size()));
-            if (calibrationCandidateDistance >= distanceTraveledToCalibrate) {
+            if (calibrationCandidateDistance >= distanceWalkedToCalibrate) {
                 calibrationInProgress = true;
                 int calibrationCandidateSteps = stepCounter.getStepsBetween(new Date(locationEvents.get(0).getTime()), new Date(locationEvents.get(locationEvents.size()-1).getTime()));
                 saveStepLength(calibrationCandidateDistance/calibrationCandidateSteps);

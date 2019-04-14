@@ -20,7 +20,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var horizontalAccuracyFilter: Double!
     private var verticalDistanceFilter: Double!
     private var verticalAccuracyFilter: Double!
-    private var distanceTraveledToCalibrate: Double!
+    private var distanceWalkedToCalibrate: Double!
     
     private var stepLength: Double!
     private var bodyHeight: Double!
@@ -46,7 +46,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             let horizontalAccuracyFilter = options["horizontalAccuracyFilter"] as? Double,
             let verticalDistanceFilter = options["verticalDistanceFilter"] as? Double,
             let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
-            let distanceTraveledToCalibrate = options["distanceTraveledToCalibrate"] as? Double,
+            let distanceWalkedToCalibrate = options["distanceWalkedToCalibrate"] as? Double,
             let updateInterval = options["updateInterval"] as? Double,
             let betterStrideFactor = options["betterStrideFactor"] as? Double,
             let deviationLength = options["deviationLength"] as? Double,
@@ -57,7 +57,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             self.horizontalAccuracyFilter = horizontalAccuracyFilter
             self.verticalDistanceFilter = verticalDistanceFilter
             self.verticalAccuracyFilter = verticalAccuracyFilter
-            self.distanceTraveledToCalibrate = distanceTraveledToCalibrate
+            self.distanceWalkedToCalibrate = distanceWalkedToCalibrate
             
             // Prepare dictionary with step counter parameters
             stepCounterOptions = ["updateInterval": updateInterval,
@@ -182,7 +182,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
         if locationEvents.count >= 3 && enableGPSCalibration {
             calibrationCandidateDistance = calculateCumulativeDistance(Array(locationEvents[1...locationEvents.count-1]))
-            if calibrationCandidateDistance >= distanceTraveledToCalibrate {
+            if calibrationCandidateDistance >= distanceWalkedToCalibrate {
                 calibrationInProgress = true
                 let calibrationCandidateSteps: Int = stepCounter.getStepsBetween(startDate: locationEvents.first!.timestamp, endDate: locationEvents.last!.timestamp)
                 saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))

@@ -6,7 +6,7 @@ var horizontalDistanceFilter = 4;
 var horizontalAccuracyFilter = 8;
 var verticalDistanceFilter = 4;
 var verticalAccuracyFilter = 10;
-var distanceTraveledToCalibrate = 40;
+var distanceWalkedToCalibrate = 40;
 
 // Parameters for step-counting-based side of the algorithm
 var updateInterval = 0.1;
@@ -20,12 +20,11 @@ var enableGPSCalibration = true;
 
 var Stepdistplugin = function() {
     this.channels = {
-        distancetraveled: cordova.addDocumentEventHandler("distancetraveled"),
-        isreadytostart: cordova.addDocumentEventHandler("isreadytostart"),
-        lastcalibration: cordova.addDocumentEventHandler("lastcalibration")
+        walkingdistance: cordova.addDocumentEventHandler("walkingdistance"),
+        stepdiststatus: cordova.addDocumentEventHandler("stepdiststatus")
     }
 
-    this.channels.distancetraveled.onHasSubscribersChange = onTraveledDistanceHasSubscibersChange;
+    this.channels.walkingdistance.onHasSubscribersChange = onWalkingDistanceHasSubscibersChange;
 
     document.addEventListener("pause", onPause, false);
     document.addEventListener("resume", onResume, false);
@@ -34,26 +33,26 @@ var Stepdistplugin = function() {
     startLocalization();
 }
 
-var onTraveledDistanceHasSubscibersChange = function() {
-    if (stepdistplugin.channels.distancetraveled.numHandlers === 1) {
-        console.log("At least one traveled distance listener registered");
-        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", [enableGPSCalibration]);
-    } else if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
-        console.log("No traveled distance listener registered");
+var onWalkingDistanceHasSubscibersChange = function() {
+    if (stepdistplugin.channels.walkingdistance.numHandlers === 1) {
+        console.log("At least one walking distance listener registered");
+        exec(onDistanceWalked, error, "stepdistplugin", "startMeasuringDistance", [enableGPSCalibration]);
+    } else if (stepdistplugin.channels.walkingdistance.numHandlers === 0) {
+        console.log("No walking distance listener registered");
         exec(success, error, "stepdistplugin", "stopMeasuringDistance", []);
     }
 }
 
 var onPause = function() {
     console.log("On pause");
-    if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
+    if (stepdistplugin.channels.walkingdistance.numHandlers === 0) {
         stopLocalization();
     }
 }
 
 var onResume = function() {
     console.log("On resume");
-    if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
+    if (stepdistplugin.channels.walkingdistance.numHandlers === 0) {
         startLocalization();
     }
 }
@@ -71,7 +70,7 @@ var startLocalization = function() {
         horizontalAccuracyFilter: horizontalAccuracyFilter,
         verticalDistanceFilter: verticalDistanceFilter,
         verticalAccuracyFilter: verticalAccuracyFilter,
-        distanceTraveledToCalibrate: distanceTraveledToCalibrate,
+        distanceWalkedToCalibrate: distanceWalkedToCalibrate,
         updateInterval: updateInterval,
         betterStrideFactor: betterStrideFactor,
         deviationLength: deviationLength,
@@ -79,7 +78,7 @@ var startLocalization = function() {
         smoothingTimeframe: smoothingTimeframe
       };
       
-    exec(pluginInfoEvent, error, "stepdistplugin", "startLocalization", [options])
+    exec(onPluginStatusEvent, error, "stepdistplugin", "startLocalization", [options]);
 }
 
 var stopLocalization = function() {
@@ -95,44 +94,45 @@ var error = function() {
     console.log("Error!");
 }
 
-var pluginInfoEvent = function(pluginInfoEvent) {
-    cordova.fireDocumentEvent("isreadytostart", {isReadyToStart: pluginInfoEvent.isReadyToStart});
-    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.debugInfo,
-        pluginInfoEvent.lastCalibrated,
-        pluginInfoEvent.stepLength,
-        pluginInfoEvent.bodyHeight));
+var onPluginStatusEvent = function(pluginStatusEvent) {
+    cordova.fireDocumentEvent("stepdiststatus", prepareStatusEvent(pluginStatusEvent.isReadyToStart,
+        pluginStatusEvent.debugInfo,
+        pluginStatusEvent.lastCalibrated,
+        pluginStatusEvent.stepLength,
+        pluginStatusEvent.bodyHeight));
 }
 
-var onDistanceTraveled = function(distanceTraveledEvent) {
-    cordova.fireDocumentEvent("distancetraveled", [distanceTraveledEvent]);
+var onDistanceWalked = function(walkingDistanceEvent) {
+    cordova.fireDocumentEvent("walkingdistance", walkingDistanceEvent);
 }
 
-function prepareLastCalibrationEvent(debugInfo, lastCalibrated, stepLength, bodyHeight) {
+function prepareStatusEvent(isReadyToStart, debugInfo, lastCalibrated, stepLength, bodyHeight) {
     var lastCalibratedString;
     if (lastCalibrated === 0) {
-        lastCalibratedString = "--"
+        lastCalibratedString = null;
     } else {
-        lastCalibratedString = unixTimestampToDateString(lastCalibrated)
+        lastCalibratedString = unixTimestampToDateString(lastCalibrated);
     }
 
     var stepLengthString;
     if (stepLength === 0.0) {
-        stepLengthString = "--"
+        stepLengthString = null;
     } else {
         stepLengthString = stepLength.toFixed(2);
     }
 
     var bodyHeightString;
     if (bodyHeight === 0.0) {
-        bodyHeightString = "--"
+        bodyHeightString = null;
     } else {
         bodyHeightString = bodyHeight.toFixed(2);
     }
 
-    return {debugInfo: debugInfo,
+    return {isReadyToStart: isReadyToStart,
+        debugInfo: debugInfo,
         lastCalibrated: lastCalibratedString,
         stepLength: stepLengthString,
-        bodyHeight: bodyHeightString}
+        bodyHeight: bodyHeightString};
 }
 
 function unixTimestampToDateString(timestamp) {
