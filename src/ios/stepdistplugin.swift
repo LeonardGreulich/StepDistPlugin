@@ -59,10 +59,29 @@
         
         self.commandDelegate!.send(
             pluginResult,
-            callbackId: distanceEventCallbackId
+            callbackId: command.callbackId
         )
 
         distanceEventCallbackId = nil
+    }
+    
+    @objc(setBodyHeight:) func setBodyHeight(command: CDVInvokedUrlCommand) {
+        var pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK
+        )
+        
+        if let bodyHeight = command.arguments.first as? Double {
+            distanceService.saveBodyHeight(bodyHeight)
+        } else {
+            pluginResult = CDVPluginResult(
+                status: CDVCommandStatus_ERROR
+            )
+        }
+        
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: command.callbackId
+        )
     }
     
     func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int) {
@@ -80,13 +99,14 @@
         )
     }
     
-    func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double) {
+    func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double, bodyHeight: Double) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
             messageAs: ["isReadyToStart": isReadyToStart,
                         "debugInfo": debugInfo,
                         "lastCalibrated": lastCalibrated,
-                        "stepLength": stepLength]
+                        "stepLength": stepLength,
+                        "bodyHeight": bodyHeight]
         )
         pluginResult?.setKeepCallbackAs(true)
         

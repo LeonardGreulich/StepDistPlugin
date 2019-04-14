@@ -23,9 +23,6 @@
         <config-file parent="NSLocationAlwaysAndWhenInUseUsageDescription" target="*-Info.plist">
             <string>Location access for step length calibration.</string>
         </config-file>
-        <config-file parent="NSMotionUsageDescription" target="*-Info.plist">
-            <string>Motion access for step counting.</string>
-        </config-file>
 		<source-file src="src/ios/stepdistplugin.swift" />
 		<source-file src="src/ios/DistanceService.swift" />
 		<source-file src="src/ios/StepCounter.swift" />

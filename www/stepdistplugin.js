@@ -94,14 +94,17 @@ var error = function() {
 
 var pluginInfoEvent = function(pluginInfoEvent) {
     cordova.fireDocumentEvent("isreadytostart", {isReadyToStart: pluginInfoEvent.isReadyToStart});
-    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.debugInfo, pluginInfoEvent.lastCalibrated, pluginInfoEvent.stepLength));
+    cordova.fireDocumentEvent("lastcalibration", prepareLastCalibrationEvent(pluginInfoEvent.debugInfo,
+        pluginInfoEvent.lastCalibrated,
+        pluginInfoEvent.stepLength,
+        pluginInfoEvent.bodyHeight));
 }
 
 var onDistanceTraveled = function(distanceTraveledEvent) {
     cordova.fireDocumentEvent("distancetraveled", [distanceTraveledEvent]);
 }
 
-function prepareLastCalibrationEvent(debugInfo, lastCalibrated, stepLength) {
+function prepareLastCalibrationEvent(debugInfo, lastCalibrated, stepLength, bodyHeight) {
     var lastCalibratedString;
     if (lastCalibrated === 0) {
         lastCalibratedString = "--"
@@ -116,9 +119,17 @@ function prepareLastCalibrationEvent(debugInfo, lastCalibrated, stepLength) {
         stepLengthString = stepLength.toFixed(2);
     }
 
+    var bodyHeightString;
+    if (bodyHeight === 0.0) {
+        bodyHeightString = "--"
+    } else {
+        bodyHeightString = bodyHeight.toFixed(2);
+    }
+
     return {debugInfo: debugInfo,
         lastCalibrated: lastCalibratedString,
-        stepLength: stepLengthString}
+        stepLength: stepLengthString,
+        bodyHeight: bodyHeightString}
 }
 
 function unixTimestampToDateString(timestamp) {
@@ -127,3 +138,9 @@ function unixTimestampToDateString(timestamp) {
 }
 
 var stepdistplugin = new Stepdistplugin();
+
+module.exports = {
+    setBodyHeight: function (bodyHeight) {
+        exec(success, error, "stepdistplugin", "setBodyHeight", [bodyHeight]);
+    }
+}

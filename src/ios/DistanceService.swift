@@ -23,6 +23,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var distanceTraveledToCalibrate: Double!
     
     private var stepLength: Double!
+    private var bodyHeight: Double!
     private var calibrationCandidateDistance: Double!
     private var lastAltitude: Double!
     private var relativeAltitudeGain: Int!
@@ -84,6 +85,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
+        loadBodyHeight()
         loadStepLength()
         
         updatePluginInfo()
@@ -133,7 +135,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     func updatePluginInfo(accuracy: Double = 9999.0, debugInfo: String = "") {
         var isReadyToStart = false;
         
-        if roundAccuracy(accuracy) <= horizontalAccuracyFilter || stepLength != 0.0 {
+        if roundAccuracy(accuracy) <= horizontalAccuracyFilter || stepLength != 0.0 || bodyHeight != 0.0 {
             isReadyToStart = true;
         }
         
@@ -141,7 +143,8 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                                      isReadyToStart: isReadyToStart,
                                      debugInfo: debugInfo,
                                      lastCalibrated: lastCalibrated,
-                                     stepLength: stepLength)
+                                     stepLength: stepLength,
+                                     bodyHeight: bodyHeight)
     }
     
     func stepCountDidChange(manager: StepCounter, count: Int) {
@@ -230,6 +233,16 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         return Double(round(10*accuracy)/10)
     }
     
+    func loadBodyHeight() {
+        bodyHeight = UserDefaults.standard.double(forKey: "bodyHeight")
+    }
+    
+    func saveBodyHeight(_ bodyHeight: Double) {
+        self.bodyHeight = bodyHeight
+        
+        UserDefaults.standard.set(self.bodyHeight, forKey: "bodyHeight")
+    }
+    
     func loadStepLength() {
         stepLength = UserDefaults.standard.double(forKey: "stepLength")
         lastCalibrated = UserDefaults.standard.integer(forKey: "lastCalibrated")
@@ -247,5 +260,5 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
 
 protocol DistanceServiceDelegate {
     func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int)
-    func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double)
+    func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double, bodyHeight: Double)
 }
