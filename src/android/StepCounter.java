@@ -137,7 +137,7 @@ public class StepCounter {
                     if (reprFragmentOfAxis.size() != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments.get(axis).get(fragments.get(axis).size()-1).fragmentType) {
                         if (areFragmentsSimilar(representativeFragment, fragments.get(axis).get(fragments.get(axis).size()-1))) {
                             addStepDates(fragments.get(axis).get(fragments.get(axis).size()-1), 2);
-                            delegate.stepCountDidChange(getStepsTotal());
+                            delegate.stepCountDidChange(getStepsTotal(), getStepsPerSecond(fragments.get(axis).get(fragments.get(axis).size()-1)));
                         } else {
                             representativeFragment = new Fragment();
                             reprFragmentOfAxis.clear();
@@ -313,8 +313,15 @@ public class StepCounter {
         return getStepsBetween(startDate15Seconds, endDate15Seconds)*4;
     }
 
+    // Returns the current step frequency based on a fragment
+    private float getStepsPerSecond(Fragment fragment) {
+        double stepDurationInSeconds = fragment.lengthTotal*updateInterval*0.5;
+
+        return (float) (1/stepDurationInSeconds);
+    }
+
     public interface StepCounterDelegate {
-        void stepCountDidChange(int count);
+        void stepCountDidChange(int count, float frequency);
     }
 
 }

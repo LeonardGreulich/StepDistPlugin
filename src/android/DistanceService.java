@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.List;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.sqrt;
 
 public class DistanceService extends Service implements LocationListener, SensorEventListener, StepCounter.StepCounterDelegate {
 
@@ -54,15 +55,19 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private double distanceTraveledToCalibrate;
 
     private float stepLength;
+    private float bodyHeight;
     private float calibrationCandidateDistance;
     private float lastAltitude;
     private int relativeAltitudeGain;
-    private int distanceTraveledPersistent;
-    private int distanceTraveledProvisional;
+    private float distanceTraveledPersistent;
+    private float distanceTraveledProvisional;
+    private float distanceTraveledHeuristic;
     private int stepsTakenPersistent;
     private int stepsTakenProvisional;
+    private int stepsTakenTotal;
     private long lastCalibrated;
     private boolean calibrationInProgress;
+    private boolean enableGPSCalibration;
 
     private volatile boolean isTracking;
 
@@ -111,8 +116,10 @@ public class DistanceService extends Service implements LocationListener, Sensor
         wakeLock.acquire();
 
         preferences = getSharedPreferences("sharedPreferences", Context.MODE_PRIVATE);
-        isTracking = false;
+        loadBodyHeight();
         loadStepLength();
+
+        isTracking = false;
 
         startForeground(1, buildNotification());
 
@@ -163,13 +170,15 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return null;
     }
 
-    public void startMeasuringDistance() {
+    public void startMeasuringDistance(boolean enableGPSCalibration) {
         locationEvents = new ArrayList<>();
         altitudeEvents = new ArrayList<>();
         distanceTraveledPersistent = 0;
         distanceTraveledProvisional = 0;
+        distanceTraveledHeuristic = 0;
         stepsTakenPersistent = 0;
         stepsTakenProvisional = 0;
+        stepsTakenTotal = 0;
         calibrationInProgress = false;
         calibrationCandidateDistance = 0;
         lastAltitude = 0;
@@ -179,6 +188,8 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
         assert sensorManager != null;
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), (int) (sensorUpdateInterval*1000000));
+
+        this.enableGPSCalibration = enableGPSCalibration;
 
         isTracking = true;
 
@@ -220,15 +231,28 @@ public class DistanceService extends Service implements LocationListener, Sensor
     }
 
     @Override
-    public void stepCountDidChange(int count) {
+    public void stepCountDidChange(int count, float frequency) {
         stepsTakenProvisional = count-stepsTakenPersistent;
-        distanceTraveledProvisional = Math.round(stepsTakenProvisional*stepLength);
+        distanceTraveledProvisional = stepsTakenProvisional*stepLength;
 
-        delegate.distanceDidChange(distanceTraveledPersistent+distanceTraveledProvisional, stepsTakenPersistent+stepsTakenProvisional, relativeAltitudeGain);
+        int newSteps = count - stepsTakenTotal;
+        distanceTraveledHeuristic += newSteps*(0.306*bodyHeight*sqrt(frequency));
+        stepsTakenTotal = count;
+
+        int distanceTraveled = 0;
+        if (distanceTraveledProvisional+distanceTraveledPersistent == 0.0 && distanceTraveledHeuristic != 0.0) {
+            distanceTraveled = Math.round(distanceTraveledHeuristic);
+        } else if (distanceTraveledProvisional+distanceTraveledPersistent != 0.0 && distanceTraveledHeuristic == 0.0) {
+            distanceTraveled = Math.round(distanceTraveledProvisional+distanceTraveledPersistent);
+        } else if (distanceTraveledProvisional+distanceTraveledPersistent != 0.0 && distanceTraveledHeuristic != 0.0) {
+            distanceTraveled = Math.round(((distanceTraveledProvisional+distanceTraveledPersistent)+distanceTraveledHeuristic)/2);
+        }
+
+        delegate.distanceDidChange(distanceTraveled, stepsTakenTotal, relativeAltitudeGain);
     }
 
     private void processLocationEvent(Location location) {
-        if (locationEvents.size() >= 3) {
+        if (locationEvents.size() >= 3 && enableGPSCalibration) {
             calibrationCandidateDistance = calculateCumulativeDistance(locationEvents.subList(1, locationEvents.size()));
             if (calibrationCandidateDistance >= distanceTraveledToCalibrate) {
                 calibrationInProgress = true;
@@ -309,11 +333,11 @@ public class DistanceService extends Service implements LocationListener, Sensor
         boolean isReadyToStart = false;
 
         // No need to round accuracy on Android
-        if (accuracy <= horizontalAccuracyFilter || stepLength != 0.0) {
+        if (accuracy <= horizontalAccuracyFilter || stepLength != 0.0 || bodyHeight != 0.0) {
             isReadyToStart = true;
         }
 
-        delegate.pluginInfoDidChange(isReadyToStart, debugInfo, lastCalibrated, stepLength);
+        delegate.pluginInfoDidChange(isReadyToStart, debugInfo, lastCalibrated, stepLength, bodyHeight);
     }
 
     public void sendPluginInfo() {
@@ -328,6 +352,18 @@ public class DistanceService extends Service implements LocationListener, Sensor
         sendPluginInfo(accuracy, "");
     }
 
+    private void loadBodyHeight() {
+        bodyHeight = preferences.getFloat("bodyHeight", 0);
+    }
+
+    public void saveBodyHeight(float bodyHeight) {
+        this.bodyHeight = bodyHeight;
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat("bodyHeight", this.bodyHeight);
+        editor.apply();
+    }
+
     private void loadStepLength() {
         stepLength = preferences.getFloat("stepLength", 0);
         lastCalibrated = preferences.getLong("lastCalibrated", 0);
@@ -338,9 +374,18 @@ public class DistanceService extends Service implements LocationListener, Sensor
         this.lastCalibrated = new Date().getTime()/1000;
 
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putFloat("stepLength", stepLength);
-        editor.putLong("lastCalibrated", lastCalibrated);
+        editor.putFloat("stepLength", this.stepLength);
+        editor.putLong("lastCalibrated", this.lastCalibrated);
         editor.apply();
+    }
+
+    public void resetData() {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.clear();
+        editor.apply();
+
+        loadBodyHeight();
+        loadStepLength();
     }
 
     @Override
@@ -361,7 +406,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     public interface DistanceServiceDelegate {
         void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain);
-        void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength);
+        void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength, float bodyHeight);
     }
 
     class StepCounterThread extends Thread {

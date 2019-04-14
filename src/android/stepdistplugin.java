@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
+import android.telecom.Call;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -65,11 +66,17 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
             return true;
         } else if (action.equals("startMeasuringDistance")) {
             distanceEventCallback = callbackContext;
-            startMeasuringDistance();
+            startMeasuringDistance(args.getBoolean(0));
             return true;
         } else if (action.equals("stopMeasuringDistance")) {
             stopMeasuringDistance();
             distanceEventCallback = null;
+            return true;
+        } else if (action.equals("setBodyHeight")) {
+            setBodyHeight(args.getDouble(0), callbackContext);
+            return true;
+        } else if (action.equals("resetData")) {
+            resetData(callbackContext);
             return true;
         }
 
@@ -111,8 +118,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         }
     }
 
-    private void startMeasuringDistance() {
-        distanceService.startMeasuringDistance();
+    private void startMeasuringDistance(boolean enableGPSCalibration) {
+        distanceService.startMeasuringDistance(enableGPSCalibration);
         
         distanceDidChange(0, 0, 0);
     }
@@ -138,6 +145,22 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         }
     }
 
+    private void setBodyHeight(double bodyHeight, CallbackContext callbackContext) {
+        distanceService.saveBodyHeight((float) bodyHeight);
+        distanceService.sendPluginInfo();
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
+    private void resetData(CallbackContext callbackContext) {
+        distanceService.resetData();
+        distanceService.sendPluginInfo();
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
     @Override
     public void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain) {
         JSONObject distanceInfo = new JSONObject();
@@ -156,13 +179,14 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     }
 
     @Override
-    public void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength) {
+    public void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength, float bodyHeight) {
         JSONObject pluginInfo = new JSONObject();
         try {
             pluginInfo.put("isReadyToStart", isReadyToStart);
             pluginInfo.put("debugInfo", debugInfo);
             pluginInfo.put("stepLength", stepLength);
             pluginInfo.put("lastCalibrated", lastCalibrated);
+            pluginInfo.put("bodyHeight", bodyHeight);
         } catch (JSONException e) {
             System.out.println("Error pluginInfo");
         }

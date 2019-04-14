@@ -143,12 +143,12 @@ function unixTimestampToDateString(timestamp) {
 var stepdistplugin = new Stepdistplugin();
 
 module.exports = {
-    setBodyHeight: function (bodyHeight) {
+    setBodyHeight: function(bodyHeight) {
         exec(success, error, "stepdistplugin", "setBodyHeight", [bodyHeight]);
     },
 
-    disableGPSCalibration: function (optionalArgument) {
-        enableGPSCalibration = !optionalArgument || false;
+    disableGPSCalibration: function(disable = true) {
+        enableGPSCalibration = !disable;
     },
 
     resetData: function() {
