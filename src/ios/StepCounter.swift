@@ -143,7 +143,7 @@ class StepCounter {
                     if reprFragmentOfAxis.count != 0 && representativeFragment.axis == axis && representativeFragment.fragmentType == fragments[axis][fragments[axis].count-1].fragmentType {
                         if areFragmentsSimilar(representativeFragment, fragments[axis][fragments[axis].count-1]) {
                             addStepDates(fragments[axis][fragments[axis].count-1], 2)
-                            delegate.stepCountDidChange(manager: self, count: getStepsTotal())
+                            delegate.stepCountDidChange(manager: self, count: getStepsTotal(), frequency: getStepsPerSecond(fragment: fragments[axis][fragments[axis].count-1]))
                         } else {
                             representativeFragment = Fragment()
                             reprFragmentOfAxis = []
@@ -310,8 +310,15 @@ class StepCounter {
         return getStepsBetween(startDate: startDate15Seconds, endDate: endDate15Seconds)*4
     }
     
+    // Returns the current step frequency based on a fragment
+    func getStepsPerSecond(fragment: Fragment) -> Double {
+        let stepDurationInSeconds: Double = Double(fragment.lengthTotal)*updateInterval*0.5
+        
+        return 1/stepDurationInSeconds
+    }
+    
 }
 
 protocol StepCounterDelegate {
-    func stepCountDidChange(manager: StepCounter, count: Int)
+    func stepCountDidChange(manager: StepCounter, count: Int, frequency: Double)
 }

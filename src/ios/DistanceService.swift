@@ -27,10 +27,12 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var calibrationCandidateDistance: Double!
     private var lastAltitude: Double!
     private var relativeAltitudeGain: Int!
-    private var distanceTraveledPersistent: Int!
-    private var distanceTraveledProvisional: Int!
+    private var distanceTraveledPersistent: Double!
+    private var distanceTraveledProvisional: Double!
+    private var distanceTraveledHeuristic: Double!
     private var stepsTakenPersistent: Int!
     private var stepsTakenProvisional: Int!
+    private var stepsTakenTotal: Int!
     private var lastCalibrated: Int!
     private var calibrationInProgress: Bool!
     private var isTracking: Bool!
@@ -102,8 +104,10 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         altitudeEvents = []
         distanceTraveledPersistent = 0
         distanceTraveledProvisional = 0
+        distanceTraveledHeuristic = 0
         stepsTakenPersistent = 0
         stepsTakenProvisional = 0
+        stepsTakenTotal = 0
         calibrationInProgress = false
         calibrationCandidateDistance = 0
         lastAltitude = 0
@@ -147,13 +151,26 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                                      bodyHeight: bodyHeight)
     }
     
-    func stepCountDidChange(manager: StepCounter, count: Int) {
+    func stepCountDidChange(manager: StepCounter, count: Int, frequency: Double) {
         stepsTakenProvisional = count-stepsTakenPersistent
-        distanceTraveledProvisional = Int(Double(stepsTakenProvisional)*stepLength)
+        distanceTraveledProvisional = Double(stepsTakenProvisional)*stepLength
+        
+        let newSteps: Double = Double(count - stepsTakenTotal)
+        distanceTraveledHeuristic += newSteps*(0.306*bodyHeight!*frequency.squareRoot())
+        stepsTakenTotal = count
+        
+        var distanceTraveled: Int = 0
+        if distanceTraveledProvisional+distanceTraveledPersistent == 0.0 && distanceTraveledHeuristic != 0.0 {
+            distanceTraveled = Int(round(distanceTraveledHeuristic))
+        } else if distanceTraveledProvisional+distanceTraveledPersistent != 0.0 && distanceTraveledHeuristic == 0.0 {
+            distanceTraveled = Int(round(distanceTraveledProvisional+distanceTraveledPersistent))
+        } else if distanceTraveledProvisional+distanceTraveledPersistent != 0.0 && distanceTraveledHeuristic != 0.0 {
+            distanceTraveled = Int(round(((distanceTraveledProvisional+distanceTraveledPersistent)+distanceTraveledHeuristic)/2))
+        }
         
         delegate.distanceDidChange(manager: self,
-                                   distanceTraveled: distanceTraveledPersistent+distanceTraveledProvisional,
-                                   stepsTaken: stepsTakenPersistent+stepsTakenProvisional,
+                                   distanceTraveled: distanceTraveled,
+                                   stepsTaken: stepsTakenTotal,
                                    relativeAltitudeGain: relativeAltitudeGain)
     }
     
@@ -171,7 +188,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                 // As a delegate, this class has the most recent step count data from the step counter
                 calibrationInProgress = false
                 stepsTakenPersistent += stepsTakenProvisional
-                distanceTraveledPersistent += Int(round(Double(stepsTakenProvisional)*stepLength))
+                distanceTraveledPersistent += Double(stepsTakenProvisional)*stepLength
             }
         }
         
