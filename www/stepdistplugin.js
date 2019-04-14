@@ -2,9 +2,9 @@ var cordova = require('cordova');
 var exec = require('cordova/exec');
 
 // Parameters for location-based side of the algorithm
-var horizontalDistanceFilter = 2;
+var horizontalDistanceFilter = 4;
 var horizontalAccuracyFilter = 8;
-var verticalDistanceFilter = 5;
+var verticalDistanceFilter = 4;
 var verticalAccuracyFilter = 10;
 var distanceTraveledToCalibrate = 40;
 

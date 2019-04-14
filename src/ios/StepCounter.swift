@@ -129,12 +129,12 @@ class StepCounter {
                     }
                     // Finally, if we have collected the results of 5 or more comparisons, we can check if there is a pattern and, perhaps, ...
                     // ... set the representative stride (or change it if we find a better one)
-                    if !reprStrideOfAxis.contains(axis) && similarities[axis].count >= 5 {
-                        if similarities[axis][similarities[axis].count-5] && similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
+                    if !reprStrideOfAxis.contains(axis) && similarities[axis].count >= 3 {
+                        if similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
                             if strides[axis][strides[axis].count-1].amplitude > representativeStride.amplitude*bSF {
                                 representativeStride = createRepresentativeStride([strides[axis][strides[axis].count-5], strides[axis][strides[axis].count-3], strides[axis][strides[axis].count-1]])
                                 reprStrideOfAxis.append(axis)
-                                initializeStepDates(representativeStride, 6)
+                                initializeStepDates(representativeStride, 4)
                             }
                         }
                     }
