@@ -36,6 +36,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var lastCalibrated: Int!
     private var calibrationInProgress: Bool!
     private var isTracking: Bool!
+    private var enableGPSCalibration: Bool!
     
     init(_ options: [String: Any]) {
         var stepCounterOptions: [String : Any]!
@@ -99,7 +100,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         locationManager.stopUpdatingLocation();
     }
     
-    func startMeasuringDistance() {
+    func startMeasuringDistance(_ enableGPSCalibration: Bool) {
         locationEvents = []
         altitudeEvents = []
         distanceTraveledPersistent = 0
@@ -112,6 +113,8 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         calibrationCandidateDistance = 0
         lastAltitude = 0
         relativeAltitudeGain = 0
+        
+        self.enableGPSCalibration = enableGPSCalibration
         
         stepCounter.startStepCounting()
         
@@ -177,7 +180,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     func processLocationEvent(_ locationEvent: CLLocation) {
         // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time
         // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
-        if locationEvents.count >= 3 {
+        if locationEvents.count >= 3 && enableGPSCalibration {
             calibrationCandidateDistance = calculateCumulativeDistance(Array(locationEvents[1...locationEvents.count-1]))
             if calibrationCandidateDistance >= distanceTraveledToCalibrate {
                 calibrationInProgress = true
@@ -273,6 +276,14 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         UserDefaults.standard.set(self.lastCalibrated, forKey: "lastCalibrated")
     }
     
+    func resetData() {
+        UserDefaults.standard.removeObject(forKey: "bodyHeight")
+        UserDefaults.standard.removeObject(forKey: "stepLength")
+        UserDefaults.standard.removeObject(forKey: "lastCalibrated")
+        
+        loadBodyHeight()
+        loadStepLength()
+    }
 }
 
 protocol DistanceServiceDelegate {

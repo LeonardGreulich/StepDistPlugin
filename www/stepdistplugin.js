@@ -15,6 +15,9 @@ var deviationLength = 0.35;
 var deviationAmplitude = 0.35;
 var smoothingTimeframe = 8;
 
+// Enable GPS calibration by default
+var enableGPSCalibration = true;
+
 var Stepdistplugin = function() {
     this.channels = {
         distancetraveled: cordova.addDocumentEventHandler("distancetraveled"),
@@ -34,7 +37,7 @@ var Stepdistplugin = function() {
 var onTraveledDistanceHasSubscibersChange = function() {
     if (stepdistplugin.channels.distancetraveled.numHandlers === 1) {
         console.log("At least one traveled distance listener registered");
-        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", []);
+        exec(onDistanceTraveled, error, "stepdistplugin", "startMeasuringDistance", [enableGPSCalibration]);
     } else if (stepdistplugin.channels.distancetraveled.numHandlers === 0) {
         console.log("No traveled distance listener registered");
         exec(success, error, "stepdistplugin", "stopMeasuringDistance", []);
@@ -142,5 +145,13 @@ var stepdistplugin = new Stepdistplugin();
 module.exports = {
     setBodyHeight: function (bodyHeight) {
         exec(success, error, "stepdistplugin", "setBodyHeight", [bodyHeight]);
+    },
+
+    disableGPSCalibration: function (optionalArgument) {
+        enableGPSCalibration = !optionalArgument || false;
+    },
+
+    resetData: function() {
+        exec(success, error, "stepdistplugin", "resetData", []);
     }
 }

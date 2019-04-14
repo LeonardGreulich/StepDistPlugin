@@ -45,7 +45,9 @@
     @objc(startMeasuringDistance:) func startMeasuringDistance(command: CDVInvokedUrlCommand) {     
         distanceEventCallbackId = command.callbackId
         
-        distanceService.startMeasuringDistance()
+        if let enableGPSCalibration = command.arguments.first as? Bool {
+            distanceService.startMeasuringDistance(enableGPSCalibration)
+        }
         
         distanceDidChange(manager: distanceService, distanceTraveled: 0, stepsTaken: 0, relativeAltitudeGain: 0)
     }
@@ -66,17 +68,28 @@
     }
     
     @objc(setBodyHeight:) func setBodyHeight(command: CDVInvokedUrlCommand) {
-        var pluginResult = CDVPluginResult(
+        if let bodyHeight = command.arguments.first as? Double {
+            distanceService.saveBodyHeight(bodyHeight)
+            distanceService.updatePluginInfo()
+        }
+        
+        let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK
         )
         
-        if let bodyHeight = command.arguments.first as? Double {
-            distanceService.saveBodyHeight(bodyHeight)
-        } else {
-            pluginResult = CDVPluginResult(
-                status: CDVCommandStatus_ERROR
-            )
-        }
+        self.commandDelegate!.send(
+            pluginResult,
+            callbackId: command.callbackId
+        )
+    }
+    
+    @objc(resetData:) func resetData(command: CDVInvokedUrlCommand) {
+        distanceService.resetData()
+        distanceService.updatePluginInfo()
+        
+        let pluginResult = CDVPluginResult(
+            status: CDVCommandStatus_OK
+        )
         
         self.commandDelegate!.send(
             pluginResult,
