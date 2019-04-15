@@ -72,6 +72,8 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     private volatile boolean isTracking;
 
+    // Used to compensate for fluctuating sampling rates
+    // DistanceService handles sensor data (as opposed to the iOS implementation), to ensure that the foreground service consititutes the event listener
     private volatile double gravityX;
     private volatile double gravityY;
     private volatile double gravityZ;
@@ -92,6 +94,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
             stepCounterOptions.put("betterStrideFactor", intent.getDoubleExtra("betterStrideFactor", 0));
             stepCounterOptions.put("deviationLength", intent.getDoubleExtra("deviationLength", 0));
             stepCounterOptions.put("deviationAmplitude", intent.getDoubleExtra("deviationAmplitude", 0));
+            stepCounterOptions.put("minStrideAmplitude", intent.getDoubleExtra("minStrideAmplitude", 0));
             stepCounterOptions.put("smoothingTimeframe", intent.getIntExtra("smoothingTimeframe", 0));
         } catch (JSONException e) {
             System.out.println("Error stepCounterOptions");

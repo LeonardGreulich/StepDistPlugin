@@ -14,6 +14,7 @@ var stepLengthFactor = 0.31;
 var betterStrideFactor = 1.2;
 var deviationLength = 0.35;
 var deviationAmplitude = 0.35;
+var minStrideAmplitude = 0.2;
 var smoothingTimeframe = 8;
 
 // Enable GPS calibration by default
@@ -73,11 +74,12 @@ var startLocalization = function() {
         verticalAccuracyFilter: verticalAccuracyFilter,
         distanceWalkedToCalibrate: distanceWalkedToCalibrate,
         updateInterval: updateInterval,
+        stepLengthFactor: stepLengthFactor,
         betterStrideFactor: betterStrideFactor,
         deviationLength: deviationLength,
         deviationAmplitude: deviationAmplitude,
-        smoothingTimeframe: smoothingTimeframe,
-        stepLengthFactor: stepLengthFactor
+        minStrideAmplitude: minStrideAmplitude,
+        smoothingTimeframe: smoothingTimeframe
       };
       
     exec(onPluginStatusEvent, error, "stepdistplugin", "startLocalization", [options]);

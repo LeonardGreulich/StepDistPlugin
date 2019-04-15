@@ -19,11 +19,15 @@ public class StepCounter {
     
     private StepCounterDelegate delegate;
 
+    // Used to align unit on iOS (g) with Android (m/s^2)
+    private static final Double GRAVITY = 9.8;
+
     // Parameters
     private Double updateInterval; // Sets how often new data from the motion sensors should be received
     private Double bSF; // Better stride factor, when a newer stride is regarded better
     private Double dL; // Deviation length, allowed deviation in length to regard strides as similar
     private Double dA; // Deviation amplitude, allowed deviation in amplitude to regard strides as similar
+    private Double mSA; // Minimum amplitude that a movement pattern is considered a stride
     private Integer rT; // Smoothing timeframe
 
     // Raw gravity data and information about maxima and minima
@@ -46,6 +50,7 @@ public class StepCounter {
         bSF = options.getDouble("betterStrideFactor");
         dL = options.getDouble("deviationLength");
         dA = options.getDouble("deviationAmplitude");
+        mSA = options.getDouble("minStrideAmplitude") * GRAVITY;
         rT = options.getInt("smoothingTimeframe");
     }
 
@@ -125,7 +130,7 @@ public class StepCounter {
                     // ... set the representative stride (or change it if we find a better one)
                     if (!reprStrideOfAxis.contains(axis) && similarities.get(axis).size() >= 3) {
                         if (similarities.get(axis).get(similarities.get(axis).size()-3) && similarities.get(axis).get(similarities.get(axis).size()-1)) {
-                            if (strides.get(axis).get(strides.get(axis).size()-1).amplitude > representativeStride.amplitude*bSF) {
+                            if (strides.get(axis).get(strides.get(axis).size()-1).amplitude >= mSA && strides.get(axis).get(strides.get(axis).size()-1).amplitude > representativeStride.amplitude*bSF) {
                                 representativeStride = createRepresentativeStride(new Stride[] {strides.get(axis).get(strides.get(axis).size()-5), strides.get(axis).get(strides.get(axis).size()-3), strides.get(axis).get(strides.get(axis).size()-1)});
                                 reprStrideOfAxis.add(axis);
                                 initializeStepDates(representativeStride, 4);

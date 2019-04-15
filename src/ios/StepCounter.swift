@@ -18,6 +18,7 @@ class StepCounter {
     private var bSF: Double! // Better stride factor, when a newer stride is regarded better
     private var dL: Double! // Deviation length, allowed deviation in length to regard strides as similar
     private var dA: Double! // Deviation amplitude, allowed deviation in amplitude to regard strides as similar
+    private var mSA: Double! // Minimum amplitude that a movement pattern is considered a stride
     private var rT: Int! // Smoothing timeframe
     
     // Raw gravity data and information about maxima and minima
@@ -35,7 +36,7 @@ class StepCounter {
     private var currentStepDates: [Date] = [] // Holds the date and time for each currently found step
     private var precedingStepDates: [Date] = [] // Holds the date and time for each previously found step
     
-    // Used to compensate for different sampling rates
+    // Used to compensate for fluctuating sampling rates
     private var timer: Timer!
     private var gravityX: Double = 0
     private var gravityY: Double = 0
@@ -46,11 +47,13 @@ class StepCounter {
         let betterStrideFactor = options["betterStrideFactor"] as? Double,
         let deviationLength = options["deviationLength"] as? Double,
         let deviationAmplitude = options["deviationAmplitude"] as? Double,
+        let minStrideAmplitude = options["minStrideAmplitude"] as? Double,
         let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
             self.updateInterval = updateInterval
             self.bSF = betterStrideFactor
             self.dL = deviationLength
             self.dA = deviationAmplitude
+            self.mSA = minStrideAmplitude
             self.rT = smoothingTimeframe
         }
     }
@@ -142,7 +145,7 @@ class StepCounter {
                     // ... set the representative stride (or change it if we find a better one)
                     if !reprStrideOfAxis.contains(axis) && similarities[axis].count >= 3 {
                         if similarities[axis][similarities[axis].count-3] && similarities[axis][similarities[axis].count-1] {
-                            if strides[axis][strides[axis].count-1].amplitude > representativeStride.amplitude*bSF {
+                            if strides[axis][strides[axis].count-1].amplitude >= mSA && strides[axis][strides[axis].count-1].amplitude > representativeStride.amplitude*bSF {
                                 representativeStride = createRepresentativeStride([strides[axis][strides[axis].count-5], strides[axis][strides[axis].count-3], strides[axis][strides[axis].count-1]])
                                 reprStrideOfAxis.append(axis)
                                 initializeStepDates(representativeStride, 4)

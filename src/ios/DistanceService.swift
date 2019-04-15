@@ -53,6 +53,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             let betterStrideFactor = options["betterStrideFactor"] as? Double,
             let deviationLength = options["deviationLength"] as? Double,
             let deviationAmplitude = options["deviationAmplitude"] as? Double,
+            let minStrideAmplitude = options["minStrideAmplitude"] as? Double,
             let smoothingTimeframe = options["smoothingTimeframe"] as? Int {
             // Store location parameters
             self.horizontalDistanceFilter = horizontalDistanceFilter
@@ -67,6 +68,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                                   "betterStrideFactor": betterStrideFactor,
                                   "deviationLength": deviationLength,
                                   "deviationAmplitude": deviationAmplitude,
+                                  "minStrideAmplitude": minStrideAmplitude,
                                   "smoothingTimeframe": smoothingTimeframe]
         } else {
             return
