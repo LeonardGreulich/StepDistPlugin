@@ -21,6 +21,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     private var verticalDistanceFilter: Double!
     private var verticalAccuracyFilter: Double!
     private var distanceWalkedToCalibrate: Double!
+    private var stepLengthFactor: Double!
     
     private var stepLength: Double!
     private var bodyHeight: Double!
@@ -47,6 +48,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             let verticalDistanceFilter = options["verticalDistanceFilter"] as? Double,
             let verticalAccuracyFilter = options["verticalAccuracyFilter"] as? Double,
             let distanceWalkedToCalibrate = options["distanceWalkedToCalibrate"] as? Double,
+            let stepLengthFactor = options["stepLengthFactor"] as? Double,
             let updateInterval = options["updateInterval"] as? Double,
             let betterStrideFactor = options["betterStrideFactor"] as? Double,
             let deviationLength = options["deviationLength"] as? Double,
@@ -58,6 +60,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
             self.verticalDistanceFilter = verticalDistanceFilter
             self.verticalAccuracyFilter = verticalAccuracyFilter
             self.distanceWalkedToCalibrate = distanceWalkedToCalibrate
+            self.stepLengthFactor = stepLengthFactor
             
             // Prepare dictionary with step counter parameters
             stepCounterOptions = ["updateInterval": updateInterval,
@@ -159,7 +162,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         distanceTraveledProvisional = Double(stepsTakenProvisional)*stepLength
         
         let newSteps: Double = Double(count - stepsTakenTotal)
-        distanceTraveledHeuristic += newSteps*(0.306*bodyHeight!*frequency.squareRoot())
+        distanceTraveledHeuristic += newSteps*(stepLengthFactor*bodyHeight!*frequency.squareRoot())
         stepsTakenTotal = count
         
         var distanceTraveled: Int = 0

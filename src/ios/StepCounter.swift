@@ -35,6 +35,12 @@ class StepCounter {
     private var currentStepDates: [Date] = [] // Holds the date and time for each currently found step
     private var precedingStepDates: [Date] = [] // Holds the date and time for each previously found step
     
+    // Used to compensate for different sampling rates
+    private var timer: Timer!
+    private var gravityX: Double = 0
+    private var gravityY: Double = 0
+    private var gravityZ: Double = 0
+    
     init(_ options: [String: Any]) {
         if let updateInterval = options["updateInterval"] as? Double,
         let betterStrideFactor = options["betterStrideFactor"] as? Double,
@@ -59,9 +65,13 @@ class StepCounter {
         motionManager.deviceMotionUpdateInterval = updateInterval
         motionManager.startDeviceMotionUpdates(to: OperationQueue.current!) { (data, error) in
             if let motionData = data {
-                self.processMotionData(x: motionData.gravity.x, y: motionData.gravity.y, z: motionData.gravity.z)
+                self.gravityX = motionData.gravity.x
+                self.gravityY = motionData.gravity.y
+                self.gravityZ = motionData.gravity.z
             }
         }
+        
+        timer = Timer.scheduledTimer(timeInterval: updateInterval, target: self, selector: #selector(processMotionData), userInfo: nil, repeats: true)
     }
     
     func stopStepCounting() {
@@ -70,6 +80,7 @@ class StepCounter {
         }
         
         motionManager.stopDeviceMotionUpdates()
+        timer.invalidate()
     }
     
     private func resetData() {
@@ -89,11 +100,11 @@ class StepCounter {
         precedingStepDates = []
     }
     
-    private func processMotionData(x: Double, y: Double, z: Double) {
+    @objc private func processMotionData() {
         // First, simply store the new incoming data points in the gravity and accelerometer array
-        self.gravityData[0].append(x)
-        self.gravityData[1].append(y)
-        self.gravityData[2].append(z)
+        self.gravityData[0].append(gravityX)
+        self.gravityData[1].append(gravityY)
+        self.gravityData[2].append(gravityZ)
         
         // Second, calculate for each new incoming point whether it is an maximina (1), minima(-1), or none(0)
         if i >= 2 {

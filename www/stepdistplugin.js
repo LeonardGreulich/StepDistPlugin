@@ -10,6 +10,7 @@ var distanceWalkedToCalibrate = 40;
 
 // Parameters for step-counting-based side of the algorithm
 var updateInterval = 0.1;
+var stepLengthFactor = 0.31;
 var betterStrideFactor = 1.2;
 var deviationLength = 0.35;
 var deviationAmplitude = 0.35;
@@ -75,7 +76,8 @@ var startLocalization = function() {
         betterStrideFactor: betterStrideFactor,
         deviationLength: deviationLength,
         deviationAmplitude: deviationAmplitude,
-        smoothingTimeframe: smoothingTimeframe
+        smoothingTimeframe: smoothingTimeframe,
+        stepLengthFactor: stepLengthFactor
       };
       
     exec(onPluginStatusEvent, error, "stepdistplugin", "startLocalization", [options]);

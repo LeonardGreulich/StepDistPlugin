@@ -53,6 +53,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
     private int verticalDistanceFilter;
     private double verticalAccuracyFilter;
     private double distanceWalkedToCalibrate;
+    private double stepLengthFactor;
 
     private float stepLength;
     private float bodyHeight;
@@ -82,6 +83,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         verticalDistanceFilter = intent.getIntExtra("verticalDistanceFilter", 0);
         verticalAccuracyFilter = intent.getDoubleExtra("verticalAccuracyFilter", 0);
         distanceWalkedToCalibrate = intent.getDoubleExtra("distanceWalkedToCalibrate", 0);
+        stepLengthFactor = intent.getDoubleExtra("stepLengthFactor", 0);
         sensorUpdateInterval = intent.getDoubleExtra("updateInterval", 0);
 
         JSONObject stepCounterOptions = new JSONObject();
@@ -236,7 +238,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         distanceTraveledProvisional = stepsTakenProvisional*stepLength;
 
         int newSteps = count - stepsTakenTotal;
-        distanceTraveledHeuristic += newSteps*(0.306*bodyHeight*sqrt(frequency));
+        distanceTraveledHeuristic += newSteps*(stepLengthFactor*bodyHeight*sqrt(frequency));
         stepsTakenTotal = count;
 
         int distanceTraveled = 0;
@@ -414,10 +416,10 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
         private Runnable stepCounterRunnable = new Runnable() {
             public void run() {
-                stepCounter.processMotionData(gravityX, gravityY, gravityZ);
                 if (isTracking) {
                     handler.postDelayed(this, (long) (sensorUpdateInterval*1000));
                 }
+                stepCounter.processMotionData(gravityX, gravityY, gravityZ);
             }
         };
 
