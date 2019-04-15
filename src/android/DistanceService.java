@@ -10,6 +10,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -107,14 +108,19 @@ public class DistanceService extends Service implements LocationListener, Sensor
             e.printStackTrace();
         }
 
-        sensorManager = (SensorManager) getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
-
         try {
+            Criteria criteria = new Criteria();
+            criteria.setAccuracy(Criteria.ACCURACY_FINE);
+            criteria.setHorizontalAccuracy(Criteria.ACCURACY_HIGH);
+            criteria.setVerticalAccuracy(Criteria.ACCURACY_HIGH);
+            criteria.setPowerRequirement(Criteria.POWER_HIGH);
             locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, horizontalDistanceFilter, this);
+            locationManager.requestLocationUpdates(0, horizontalDistanceFilter, criteria, this, null);
         } catch (SecurityException securityException) {
             securityException.printStackTrace();
         }
+
+        sensorManager = (SensorManager) getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
 
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"StepDistPlugin:AllowStepCounting");
