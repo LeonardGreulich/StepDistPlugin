@@ -33,6 +33,7 @@ import java.util.List;
 import static java.lang.Math.abs;
 import static java.lang.Math.sqrt;
 
+// Main distance estimation class. Initializes the GNSS service as well as the step counting service and processes results of both.
 public class DistanceService extends Service implements LocationListener, SensorEventListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();
@@ -224,17 +225,17 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-
+        // No need for action
     }
 
     @Override
     public void onProviderEnabled(String provider) {
-
+        // No need for action
     }
 
     @Override
     public void onProviderDisabled(String provider) {
-
+        // No need for action
     }
 
     public void setDelegate(DistanceServiceDelegate distanceServiceDelegate) {

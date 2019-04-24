@@ -1,6 +1,6 @@
 # Cordova Walking Distance Estimation Plugin
 
-A Cordova plugin which allows the walking distance estimation of persons. The plugin utilizes a step counting and step length calibration approach. Supported platforms are Android and iOS with an analogous implementation targeting inter-platform comparability of results.
+A Cordova plugin which allows the walking distance estimation of persons. The plugin utilizes a step counting and step length estimation approach. Supported platforms are Android and iOS with an analogous implementation targeting inter-platform comparability of results.
 
 ## Supported Platforms
 
@@ -12,16 +12,16 @@ A Cordova plugin which allows the walking distance estimation of persons. The pl
 To use this plugin, add `stepdist` to your Cordova application using the Cordova command line interface (CLI):
 
 ```yaml
-cordova plugin add cordova-plugin-todo
+cordova plugin add cordova-plugin-stepdist
 ```
 
 Listening to walking distance events (which automatically starts the estimation):
 
 ```yaml
 var onWalkingDistanceEvent = function(walkingDistanceEvent) {
-    // walkingDistanceEvent.distance}
-    // walkingDistanceEvent.elevation}
-    // walkingDistanceEvent.steps}
+    // walkingDistanceEvent.distance
+    // walkingDistanceEvent.elevation
+    // walkingDistanceEvent.steps
 };
 document.addEventListener("walkingdistance", onWalkingDistanceEvent);
 ```
@@ -36,10 +36,10 @@ Listening to plugin status event (optionally, for monitoring purposes):
 
 ```yaml
 var onStepDistStatusEvent = function(stepDistStatusEvent) {
-    // stepDistStatusEvent.isReadyToStart}
-    // stepDistStatusEvent.stepLength}
-    // stepDistStatusEvent.lastCalibrated}
-    // stepDistStatusEvent.bodyHeight}
+    // stepDistStatusEvent.isReadyToStart
+    // stepDistStatusEvent.stepLength
+    // stepDistStatusEvent.lastCalibrated
+    // stepDistStatusEvent.bodyHeight
 };
 document.addEventListener("stepdiststatus", onStepDistStatusEvent);
 ```

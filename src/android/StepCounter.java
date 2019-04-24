@@ -15,6 +15,7 @@ import java.util.List;
 
 import static java.lang.Math.abs;
 
+// Step counting service. Processes gravity sensor data to detect strides. Most complex class therefore extensively commented.
 public class StepCounter {
     
     private StepCounterDelegate delegate;

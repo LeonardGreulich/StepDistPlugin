@@ -8,6 +8,7 @@
 import Foundation
 import CoreMotion
 
+// Step counting service. Processes gravity sensor data to detect strides. Most complex class therefore extensively commented.
 class StepCounter {
     
     private var motionManager: CMMotionManager!

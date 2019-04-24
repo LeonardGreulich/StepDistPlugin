@@ -7,6 +7,7 @@
 
 import CoreLocation
 
+// Main distance estimation class. Initializes the GNSS service as well as the step counting service and processes results of both.
 class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate {
     
     private var locationManager: CLLocationManager!

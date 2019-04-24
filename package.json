@@ -1,7 +1,7 @@
 {
   "name": "cordova-plugin-stepdist",
   "version": "0.0.1",
-  "description": "A plugin to estimate the travaled distance using a hybrid GPS and step counting approach.",
+  "description": "A plugin to estimate the walking distance of persons using a step counting and step length estimation approach.",
   "cordova": {
     "id": "cordova-plugin-stepdist",
     "platforms": [
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "none"
+    "url": "https://github.com/LeonardGreulich/StepDistPlugin"
   },
   "keywords": [
     "ecosystem:cordova",
@@ -19,5 +19,5 @@
     "cordova-android"
   ],
   "author": "Leonard Greulich",
-  "license": "ISC"
+  "license": "Apache-2.0"
 }

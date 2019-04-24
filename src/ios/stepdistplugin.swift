@@ -5,6 +5,7 @@
 //  Copyright © 2019 Leonard Greulich. All rights reserved.
 //
 
+// Native interface class. Manages the communication with the JavaScript interface and the life cycle of the plugin.
 @objc(stepdistplugin) class stepdistplugin : CDVPlugin, DistanceServiceDelegate {
     
     var distanceService: DistanceService!

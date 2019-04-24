@@ -22,6 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+// Native interface class. Manages the communication with the JavaScript interface and the life cycle of the plugin.
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
     private DistanceService distanceService;
