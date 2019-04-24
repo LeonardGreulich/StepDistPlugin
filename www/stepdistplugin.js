@@ -10,12 +10,12 @@ var distanceWalkedToCalibrate = 40;
 
 // Parameters for step-counting-based side of the algorithm
 var updateInterval = 0.1;
-var stepLengthFactor = 0.31;
+var stepLengthFactor = 0.33;
 var betterStrideFactor = 1.2;
 var deviationLength = 0.35;
 var deviationAmplitude = 0.35;
 var minStrideAmplitude = 0.2;
-var smoothingTimeframe = 8;
+var smoothingTimeframe = 6;
 
 // Enable GPS calibration by default
 var enableGPSCalibration = true;
