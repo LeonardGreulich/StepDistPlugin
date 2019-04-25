@@ -17,8 +17,8 @@ var deviationAmplitude = 0.35;
 var minStrideAmplitude = 0.2;
 var smoothingTimeframe = 6;
 
-// Enable GPS calibration by default
-var enableGPSCalibration = true;
+// Enable GNSS calibration by default
+var enableGNSSCalibration = true;
 
 var Stepdistplugin = function() {
     this.channels = {
@@ -38,7 +38,7 @@ var Stepdistplugin = function() {
 var onWalkingDistanceHasSubscibersChange = function() {
     if (stepdistplugin.channels.walkingdistance.numHandlers === 1) {
         console.log("At least one walking distance listener registered");
-        exec(onDistanceWalked, error, "stepdistplugin", "startMeasuringDistance", [enableGPSCalibration]);
+        exec(onDistanceWalked, error, "stepdistplugin", "startMeasuringDistance", [enableGNSSCalibration]);
     } else if (stepdistplugin.channels.walkingdistance.numHandlers === 0) {
         console.log("No walking distance listener registered");
         exec(success, error, "stepdistplugin", "stopMeasuringDistance", []);
@@ -151,8 +151,8 @@ module.exports = {
         exec(success, error, "stepdistplugin", "setBodyHeight", [bodyHeight]);
     },
 
-    disableGPSCalibration: function(disable = true) {
-        enableGPSCalibration = !disable;
+    disableGNSSCalibration: function(disable = true) {
+        enableGNSSCalibration = !disable;
     },
 
     resetData: function() {

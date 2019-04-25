@@ -26,7 +26,7 @@ Stop listening to walking distance events (to stop the estimation):
 
     document.removeEventListener("walkingdistance", onWalkingDistanceEvent);
 
-Listening to plugin status event (optionally, for monitoring purposes):
+Listening to plugin status events (optionally, for monitoring purposes):
 
     var onStepDistStatusEvent = function(stepDistStatusEvent) {
         // stepDistStatusEvent.isReadyToStart
@@ -38,6 +38,6 @@ Listening to plugin status event (optionally, for monitoring purposes):
 
 Configuration methods (optional):
 
-    stepdist.setBodyHeight(1.89); // Specified in meters
-    stepdist.disableGNSSCalibration();
-    stepdist.resetData();
+    stepdist.setBodyHeight(1.89); // Specified in meters, improves accuracy
+    stepdist.disableGNSSCalibration(); // Disables step length calibration
+    stepdist.resetData(); // Remove body height and calibrated step length
