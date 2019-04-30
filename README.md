@@ -40,4 +40,4 @@ Configuration methods (optional):
 
     stepdist.setBodyHeight(1.89); // Specified in meters, improves accuracy
     stepdist.disableGNSSCalibration(); // Disables step length calibration
-    stepdist.resetData(); // Remove body height and calibrated step length
+    stepdist.resetData(); // Removes body height and calibrated step length

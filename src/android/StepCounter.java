@@ -1,3 +1,13 @@
+//
+// StepCounter.java
+//
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains step counting class.
+// Processes gravity sensor data to detect strides and steps.
+//
+
 package cordova.plugin.stepdist;
 
 import android.content.Context;
@@ -15,7 +25,6 @@ import java.util.List;
 
 import static java.lang.Math.abs;
 
-// Step counting service. Processes gravity sensor data to detect strides. Most complex class therefore extensively commented.
 public class StepCounter {
     
     private StepCounterDelegate delegate;

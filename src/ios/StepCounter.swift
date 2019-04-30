@@ -1,14 +1,16 @@
 //
-//  StepCounter.swift
+// StepCounter.swift
 //
-//  Created by Leonard Greulich on 2/16/19.
-//  Copyright © 2019 Leonard Greulich. All rights reserved.
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains step counting class.
+// Processes gravity sensor data to detect strides and steps.
 //
 
 import Foundation
 import CoreMotion
 
-// Step counting service. Processes gravity sensor data to detect strides. Most complex class therefore extensively commented.
 class StepCounter {
     
     private var motionManager: CMMotionManager!

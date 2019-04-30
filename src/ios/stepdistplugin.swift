@@ -1,11 +1,13 @@
 //
-//  stepdistplugin.swift
+// stepdistplugin.swift
 //
-//  Created by Leonard Greulich on 2/16/19.
-//  Copyright © 2019 Leonard Greulich. All rights reserved.
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains native interface class.
+// Manages the communication with the JavaScript interface and the life cycle of the plugin.
 //
 
-// Native interface class. Manages the communication with the JavaScript interface and the life cycle of the plugin.
 @objc(stepdistplugin) class stepdistplugin : CDVPlugin, DistanceServiceDelegate {
     
     var distanceService: DistanceService!

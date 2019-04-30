@@ -1,3 +1,14 @@
+//
+// stepdistplugin.js
+//
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Plugin interface. Provides methods and events for a parent Cordova application.
+// Moreover, it lists all parameters for the algorithm that are passed to the respective platform implementations.
+// Thereby, it manages the communication with the native interface and also the life cycle of the plugin.
+//
+
 var cordova = require('cordova');
 var exec = require('cordova/exec');
 
@@ -60,7 +71,7 @@ var onResume = function() {
 }
 
 var onBackbuttonPressed = function() {
-    console.log("On back button pressed");
+    console.log("Back button pressed");
     // Do not close the app when pressing back (default behavior), as it could result in an accidental stop of the algorithm
 }
 

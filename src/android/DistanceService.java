@@ -1,3 +1,13 @@
+//
+// DistanceService.java
+//
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains main distance estimation class.
+// Initializes the GNSS service as well as the step counting service and processes results of both.
+//
+
 package cordova.plugin.stepdist;
 
 import android.app.Notification;
@@ -33,7 +43,6 @@ import java.util.List;
 import static java.lang.Math.abs;
 import static java.lang.Math.sqrt;
 
-// Main distance estimation class. Initializes the GNSS service as well as the step counting service and processes results of both.
 public class DistanceService extends Service implements LocationListener, SensorEventListener, StepCounter.StepCounterDelegate {
 
     private final IBinder mBinder = new LocalBinder();

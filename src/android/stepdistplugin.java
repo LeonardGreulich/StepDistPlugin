@@ -1,3 +1,13 @@
+//
+// stepdistplugin.java
+//
+// Created by Leonard Greulich on 2/16/19.
+// Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains native interface class.
+// Manages the communication with the JavaScript interface and the life cycle of the plugin.
+//
+
 package cordova.plugin.stepdist;
 
 import android.Manifest;
@@ -22,7 +32,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Native interface class. Manages the communication with the JavaScript interface and the life cycle of the plugin.
 public class stepdistplugin extends CordovaPlugin implements DistanceService.DistanceServiceDelegate {
 
     private DistanceService distanceService;
