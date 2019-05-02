@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-stepdist",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A plugin to estimate the walking distance of persons using a step counting and step length estimation approach.",
   "cordova": {
     "id": "cordova-plugin-stepdist",

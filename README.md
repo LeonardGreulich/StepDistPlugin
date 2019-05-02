@@ -44,4 +44,4 @@ Configuration methods (optional):
 
 ## Background processing
 
-The plugin provides background processing capabilities. It automatically registers a foreground service on Android and enables background execution on iOS. It is not required that the parent Cordova application implements mechanisms for background execution.
+The plugin provides robust background processing capabilities. It automatically registers a foreground service (background-enabled service with a foreground notification) on Android and enables background execution on iOS. It is not required that the parent Cordova application implements mechanisms for background execution.
