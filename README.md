@@ -41,3 +41,7 @@ Configuration methods (optional):
     stepdist.setBodyHeight(1.89); // Specified in meters, improves accuracy
     stepdist.disableGNSSCalibration(); // Disables step length calibration
     stepdist.resetData(); // Removes body height and calibrated step length
+
+## Background processing
+
+The plugin provides background processing capabilities. It automatically registers a foreground service on Android and enables background execution on iOS. It is not required that the parent Cordova application implements mechanisms for background execution.
