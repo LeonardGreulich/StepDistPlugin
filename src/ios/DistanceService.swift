@@ -86,6 +86,9 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
     }
     
+    // Starts the localization and initializes the background processing.
+    // Sends the current plugin status (isReadyToStart, calibratedStepLength, calibrationDate, bodyHeight) to the native interface
+    // and from there to the plugin interface.
     func startLocalization() {
         stepCounter.delegate = self
         
@@ -104,10 +107,13 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         isTracking = false;
     }
     
+    // Stops the localization.
     func stopLocalization() {
         locationManager.stopUpdatingLocation();
     }
     
+    // Starts the main distance estimation and step length calibration.
+    // For this, the step counting algorithm is started.
     func startMeasuringDistance(_ enableGPSCalibration: Bool) {
         locationEvents = []
         altitudeEvents = []
@@ -129,12 +135,14 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         isTracking = true;
     }
     
+    // Stops the main distance estimation and step length calibration.
     func stopMeasuringDistance() {
         stepCounter.stopStepCounting()
         
         isTracking = false;
     }
     
+    // Processes new incoming location events.
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let locationEvent = locations.last else {
             return
@@ -147,6 +155,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
     }
     
+    // Sends the plugin status to the native and from there to the plugin interface.
     func updatePluginInfo(accuracy: Double = 9999.0, debugInfo: String = "") {
         var isReadyToStart = false;
         
@@ -162,14 +171,18 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                                      bodyHeight: bodyHeight)
     }
     
+    // Called from within the StepCounter service whenever new steps occured.
     func stepCountDidChange(manager: StepCounter, count: Int, frequency: Double) {
         stepsTakenProvisional = count-stepsTakenPersistent
+        // Walking distance based on GNSS-calibrated step length.
         distanceTraveledProvisional = Double(stepsTakenProvisional)*stepLength
         
+        // Walking distance based on heuristica formula based on body height and step frequency.
         let newSteps: Double = Double(count - stepsTakenTotal)
         distanceTraveledHeuristic += newSteps*(stepLengthFactor*bodyHeight!*frequency.squareRoot())
         stepsTakenTotal = count
         
+        // Pick on of the two walking distance estimations or calculate the average of both.
         var distanceTraveled: Int = 0
         if distanceTraveledProvisional+distanceTraveledPersistent == 0.0 && distanceTraveledHeuristic != 0.0 {
             distanceTraveled = Int(round(distanceTraveledHeuristic))
@@ -186,8 +199,8 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
     }
     
     func processLocationEvent(_ locationEvent: CLLocation) {
-        // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time
-        // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe
+        // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time.
+        // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe.
         if locationEvents.count >= 3 && enableGPSCalibration {
             calibrationCandidateDistance = calculateCumulativeDistance(Array(locationEvents[1...locationEvents.count-1]))
             if calibrationCandidateDistance >= distanceWalkedToCalibrate {
@@ -196,7 +209,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
                 saveStepLength(calibrationCandidateDistance/Double(calibrationCandidateSteps))
                 updatePluginInfo()
             } else if calibrationInProgress {
-                // As a delegate, this class has the most recent step count data from the step counter
+                // As a delegate, this class has the most recent step count data from the step counter.
                 calibrationInProgress = false
                 stepsTakenPersistent += stepsTakenProvisional
                 distanceTraveledPersistent += Double(stepsTakenProvisional)*stepLength
@@ -218,6 +231,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
     }
     
+    // Takes multiple location events and returns the total distance between them, used for step length calibration.
     func calculateCumulativeDistance(_ locations: [CLLocation]) -> Double {
         var lastLocation: CLLocation!
         var cumulativeDistance: Double = 0.0
@@ -232,6 +246,7 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         return cumulativeDistance
     }
     
+    // Estimate the elevation based on GNSS location events.
     func updateRelativeAltitude(_ currentApproximateAltitude: Double) {
         altitudeEvents.append(currentApproximateAltitude);
         if altitudeEvents.count == Int(verticalDistanceFilter) {
@@ -257,10 +272,12 @@ class DistanceService: NSObject, CLLocationManagerDelegate, StepCounterDelegate 
         }
     }
     
+    // Used since iOS reports the location accuracy with multiple places after the decimal point.
     func roundAccuracy(_ accuracy: Double) -> Double {
         return Double(round(10*accuracy)/10)
     }
     
+    // Persistence methods.
     func loadBodyHeight() {
         bodyHeight = UserDefaults.standard.double(forKey: "bodyHeight")
     }

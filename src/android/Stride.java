@@ -1,7 +1,18 @@
+//
+//  Stride.swift
+//
+//  Created by Leo on 3/6/19.
+//  Copyright © 2019 Leonard Greulich. All rights reserved.
+//
+// Contains the Stride model that is detected in gravity data and used for step counting.
+//
+
 package cordova.plugin.stepdist;
 
 public class Stride {
 
+    // Indicates whether the identified stride pattern starts with a maximum or a minimum within the gravity sensor data.
+    // As stated in the thesis, every stride is modeled by three extrema (max-min-max or min-max-min).
     enum orders {
         MaxMinMax, MinMaxMin, none
     }

@@ -41,6 +41,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
     
     private Context applicationContext;
 
+    // In order to communicate with the DistanceService which constitutes a foreground service (see Android documentation).
+    // Method not present in iOS implementation.
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -55,6 +57,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         }
     };
 
+    // Initilizaes the notification channel which is later used for the foreground service notification (see Android documentation).
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
@@ -64,6 +67,21 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         createNotificationChannel();
     }
 
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    "stepDistServiceChannel",
+                    "Distance Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+
+            NotificationManager manager = applicationContext.getSystemService(NotificationManager.class);
+            assert manager != null;
+            manager.createNotificationChannel(serviceChannel);
+        }
+    }
+
+    // Manages and propagates the method calls from the plugin interface. Different to iOS implementation where methods are directly called.
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("startLocalization")) {
@@ -93,6 +111,8 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         return false;
     }
 
+    // Plugin life cycle method. Starts the localization in order to get a GNSS fix for the step length calibration.
+    // Starts the foreground service (see Android documentation) for the background processing.
     private void startLocalization(JSONObject options) throws JSONException {
         if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
             PermissionHelper.requestPermission(this, 0, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -121,6 +141,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         applicationContext.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
+    // Stops the localization and background processing.
     private void stopLocalization() {
         if (distanceService != null) {
             applicationContext.unbindService(serviceConnection);
@@ -130,12 +151,14 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         }
     }
 
+    // Starts the main distance estimation and step length calibration.
     private void startMeasuringDistance(boolean enableGPSCalibration) {
         distanceService.startMeasuringDistance(enableGPSCalibration);
         
         distanceDidChange(0, 0, 0);
     }
 
+    // Stops the main distance estimation and step length calibration.
     private void stopMeasuringDistance() {
         distanceService.stopMeasuringDistance();
 
@@ -143,20 +166,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         distanceEventCallback.sendPluginResult(result);
     }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel serviceChannel = new NotificationChannel(
-                    "stepDistServiceChannel",
-                    "Distance Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
-
-            NotificationManager manager = applicationContext.getSystemService(NotificationManager.class);
-            assert manager != null;
-            manager.createNotificationChannel(serviceChannel);
-        }
-    }
-
+    // Sets the body height and enables the heuristic formula to estimate the walking distance based on step frequency and body height.
     private void setBodyHeight(double bodyHeight, CallbackContext callbackContext) {
         distanceService.saveBodyHeight((float) bodyHeight);
         distanceService.sendPluginInfo();
@@ -165,6 +175,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         callbackContext.sendPluginResult(pluginResult);
     }
 
+    // Erases all persisted data (step length, calibration date, and body height)
     private void resetData(CallbackContext callbackContext) {
         distanceService.resetData();
         distanceService.sendPluginInfo();
@@ -173,6 +184,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         callbackContext.sendPluginResult(pluginResult);
     }
 
+    // Called from within the DistanceService. Sends distance, steps, and elevation to the plugin interface.
     @Override
     public void distanceDidChange(int distanceTraveled, int stepsTaken, int relativeAltitudeGain) {
         JSONObject distanceInfo = new JSONObject();
@@ -190,6 +202,7 @@ public class stepdistplugin extends CordovaPlugin implements DistanceService.Dis
         distanceEventCallback.sendPluginResult(distanceInfoResult);
     }
 
+    // Called from within the DistanceService. Sends status information to the plugin interface.
     @Override
     public void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength, float bodyHeight) {
         JSONObject pluginInfo = new JSONObject();

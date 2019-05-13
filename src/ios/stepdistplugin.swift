@@ -15,6 +15,8 @@
     var pluginInfoEventCallbackId: String!
     var distanceEventCallbackId: String!
     
+    // Plugin life cycle method. Starts the localization in order to get a GNSS fix for the step length calibration.
+    // The localization also initializes the background execution.
     @objc(startLocalization:) func startLocalization(command: CDVInvokedUrlCommand) {
         pluginInfoEventCallbackId = command.callbackId
         
@@ -30,6 +32,7 @@
         distanceService.startLocalization()
     }
 
+    // Plugin life cycle method. Stops the localization and background execution.
     @objc(stopLocalization:) func stopLocalization(command: CDVInvokedUrlCommand) {
         distanceService.stopLocalization()
 
@@ -45,6 +48,7 @@
         pluginInfoEventCallbackId = nil
     }
     
+    // Starts the main distance estimation and step length calibration.
     @objc(startMeasuringDistance:) func startMeasuringDistance(command: CDVInvokedUrlCommand) {     
         distanceEventCallbackId = command.callbackId
         
@@ -55,6 +59,7 @@
         distanceDidChange(manager: distanceService, distanceTraveled: 0, stepsTaken: 0, relativeAltitudeGain: 0)
     }
 
+    // Stops the main distance estimation and step length calibration.
     @objc(stopMeasuringDistance:) func stopMeasuringDistance(command: CDVInvokedUrlCommand) {
         distanceService.stopMeasuringDistance()
         
@@ -70,6 +75,7 @@
         distanceEventCallbackId = nil
     }
     
+    // Sets the body height and enables the heuristic formula to estimate the walking distance based on step frequency and body height.
     @objc(setBodyHeight:) func setBodyHeight(command: CDVInvokedUrlCommand) {
         if let bodyHeight = command.arguments.first as? Double {
             distanceService.saveBodyHeight(bodyHeight)
@@ -86,6 +92,7 @@
         )
     }
     
+    // Erases all persisted data (step length, calibration date, and body height)
     @objc(resetData:) func resetData(command: CDVInvokedUrlCommand) {
         distanceService.resetData()
         distanceService.updatePluginInfo()
@@ -100,6 +107,7 @@
         )
     }
     
+    // Called from within the DistanceService. Sends distance, steps, and elevation to the plugin interface.
     func distanceDidChange(manager: DistanceService, distanceTraveled: Int, stepsTaken: Int, relativeAltitudeGain: Int) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,
@@ -115,6 +123,7 @@
         )
     }
     
+    // Called from within the DistanceService. Sends status information to the plugin interface.
     func pluginInfoDidChange(manager: DistanceService, isReadyToStart: Bool, debugInfo: String, lastCalibrated: Int, stepLength: Double, bodyHeight: Double) {
         let pluginResult = CDVPluginResult(
             status: CDVCommandStatus_OK,

@@ -12,14 +12,14 @@
 var cordova = require('cordova');
 var exec = require('cordova/exec');
 
-// Parameters for location-based side of the algorithm
+// Parameters for location-based side of the algorithm.
 var horizontalDistanceFilter = 4;
 var horizontalAccuracyFilter = 8;
 var verticalDistanceFilter = 4;
 var verticalAccuracyFilter = 10;
 var distanceWalkedToCalibrate = 40;
 
-// Parameters for step-counting-based side of the algorithm
+// Parameters for step-counting-based side of the algorithm.
 var updateInterval = 0.1;
 var stepLengthFactor = 0.33;
 var betterStrideFactor = 1.2;
@@ -28,9 +28,11 @@ var deviationAmplitude = 0.35;
 var minStrideAmplitude = 0.2;
 var smoothingTimeframe = 6;
 
-// Enable GNSS calibration by default
+// Enable GNSS calibration by default.
 var enableGNSSCalibration = true;
 
+// Registers event channels for distance and plugin status events.
+// Also, registers listeners for plugin life cycle methods.
 var Stepdistplugin = function() {
     this.channels = {
         walkingdistance: cordova.addDocumentEventHandler("walkingdistance"),
@@ -46,6 +48,8 @@ var Stepdistplugin = function() {
     startLocalization();
 }
 
+// Starts and stops the distance estimation as soon as one listener for distance events ... 
+// ... has been registered within the parent Cordova application.
 var onWalkingDistanceHasSubscibersChange = function() {
     if (stepdistplugin.channels.walkingdistance.numHandlers === 1) {
         console.log("At least one walking distance listener registered");
@@ -72,9 +76,10 @@ var onResume = function() {
 
 var onBackbuttonPressed = function() {
     console.log("Back button pressed");
-    // Do not close the app when pressing back (default behavior), as it could result in an accidental stop of the algorithm
+    // Do not close the app when pressing back (default behavior), as it could result in an accidental stop of the algorithm.
 }
 
+// Pass parameters to the native platform implementation (Android or iOS) to ensure inter-platform comparability.
 var startLocalization = function() {
     console.log("Start localization");
 
@@ -109,16 +114,18 @@ var error = function() {
     console.log("Error!");
 }
 
+// Fire event that contains distance, step, and elevation information
+var onDistanceWalked = function(walkingDistanceEvent) {
+    cordova.fireDocumentEvent("walkingdistance", walkingDistanceEvent);
+}
+
+// Prepare and fire event that contains plugin status information
 var onPluginStatusEvent = function(pluginStatusEvent) {
     cordova.fireDocumentEvent("stepdiststatus", prepareStatusEvent(pluginStatusEvent.isReadyToStart,
         pluginStatusEvent.debugInfo,
         pluginStatusEvent.lastCalibrated,
         pluginStatusEvent.stepLength,
         pluginStatusEvent.bodyHeight));
-}
-
-var onDistanceWalked = function(walkingDistanceEvent) {
-    cordova.fireDocumentEvent("walkingdistance", walkingDistanceEvent);
 }
 
 function prepareStatusEvent(isReadyToStart, debugInfo, lastCalibrated, stepLength, bodyHeight) {
@@ -157,6 +164,7 @@ function unixTimestampToDateString(timestamp) {
 
 var stepdistplugin = new Stepdistplugin();
 
+// Methods that are exposed to the parent Cordova application
 module.exports = {
     setBodyHeight: function(bodyHeight) {
         exec(success, error, "stepdistplugin", "setBodyHeight", [bodyHeight]);

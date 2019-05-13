@@ -83,12 +83,17 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
     private volatile boolean isTracking;
 
-    // Used to compensate for fluctuating sampling rates
-    // DistanceService handles sensor data (as opposed to the iOS implementation), to ensure that the foreground service consititutes the event listener
+    // Used to compensate for fluctuating sampling rates.
+    // DistanceService handles sensor data (as opposed to the iOS implementation), ...
+    // ... to ensure that the foreground service consititutes the event listener.
     private volatile double gravityX;
     private volatile double gravityY;
     private volatile double gravityZ;
 
+    // Method that is called when the native interface (stepdistplugin.java) starts and binds to this foreground service.
+    // Initializes the background processing and starts the GNSS localization used for the step length calibration.
+    // A wake lock is set to prevent the CPU from sleeping when the device is in sleep ...
+    // ... registering and running a foreground service is not enough to prevent the CPU from sleeping.
     @Override
     public IBinder onBind(Intent intent) {
         horizontalDistanceFilter = intent.getIntExtra("horizontalDistanceFilter", 0);
@@ -147,6 +152,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return mBinder;
     }
 
+    // Plugin life cycle method.
     @Override
     public boolean onUnbind(Intent intent) {
         locationManager.removeUpdates(this);
@@ -154,6 +160,9 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return super.onUnbind(intent);
     }
 
+    // Creates a notification that is required to enable a foreground service ...
+    // ... and background processing since Android 8 Oreo (see Android documentation).
+    // Sets the icon of the parent Cordova application as notification icon.
     private Notification buildNotification() {
         Intent notificationIntent = new Intent(this, getMainActivity());
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
@@ -168,7 +177,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
 
         Notification notification = new NotificationCompat.Builder(this, "stepDistServiceChannel")
                 .setContentTitle(applicationName)
-                .setContentText("Estimating your traveled distance.")
+                .setContentText("Estimating your walking distance.")
                 .setSmallIcon(getApplicationInfo().icon)
                 .setContentIntent(pendingIntent)
                 .build();
@@ -176,6 +185,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return notification;
     }
 
+    // Helper method (Android implementation only)
     private Class getMainActivity() {
         Context context = getApplicationContext();
         String packageName = context.getPackageName();
@@ -191,6 +201,8 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return null;
     }
 
+    // Starts the main distance estimation and step length calibration.
+    // For this, the step counting algorithm is started.
     public void startMeasuringDistance(boolean enableGPSCalibration) {
         locationEvents = new ArrayList<>();
         altitudeEvents = new ArrayList<>();
@@ -218,11 +230,13 @@ public class DistanceService extends Service implements LocationListener, Sensor
         stepCounterThread.start();
     }
 
+    // Stops the main distance estimation and step length calibration.
     public void stopMeasuringDistance() {
         sensorManager.unregisterListener(this);
         isTracking = false;
     }
 
+    // Processes new incoming location events.
     @Override
     public void onLocationChanged(Location location) {
         sendPluginInfo(location.getAccuracy(), "Accuracy: " + String.valueOf(location.getAccuracy()));
@@ -247,19 +261,24 @@ public class DistanceService extends Service implements LocationListener, Sensor
         // No need for action
     }
 
+    // Used for the delegation pattern (not directly set as in the iOS implementation).
     public void setDelegate(DistanceServiceDelegate distanceServiceDelegate) {
         delegate = distanceServiceDelegate;
     }
 
+    // Called from within the StepCounter service whenever new steps occured.
     @Override
     public void stepCountDidChange(int count, float frequency) {
         stepsTakenProvisional = count-stepsTakenPersistent;
+        // Walking distance based on GNSS-calibrated step length.
         distanceTraveledProvisional = stepsTakenProvisional*stepLength;
 
+        // Walking distance based on heuristica formula based on body height and step frequency.
         int newSteps = count - stepsTakenTotal;
         distanceTraveledHeuristic += newSteps*(stepLengthFactor*bodyHeight*sqrt(frequency));
         stepsTakenTotal = count;
 
+        // Pick on of the two walking distance estimations or calculate the average of both.
         int distanceTraveled = 0;
         if (distanceTraveledProvisional+distanceTraveledPersistent == 0.0 && distanceTraveledHeuristic != 0.0) {
             distanceTraveled = Math.round(distanceTraveledHeuristic);
@@ -273,6 +292,8 @@ public class DistanceService extends Service implements LocationListener, Sensor
     }
 
     private void processLocationEvent(Location location) {
+        // Here, not simply take locationEvents.first.time, as this would give the end-time of the 4m walk, not the start, and would neglect steps in this time.
+        // Also not use the current locationEvent as we dont have steps for this because of the smoothing timeframe.
         if (locationEvents.size() >= 3 && enableGPSCalibration) {
             calibrationCandidateDistance = calculateCumulativeDistance(locationEvents.subList(1, locationEvents.size()));
             if (calibrationCandidateDistance >= distanceWalkedToCalibrate) {
@@ -281,6 +302,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
                 saveStepLength(calibrationCandidateDistance/calibrationCandidateSteps);
                 sendPluginInfo();
             } else if (calibrationInProgress) {
+                // As a delegate, this class has the most recent step count data from the step counter.
                 calibrationInProgress = false;
                 stepsTakenPersistent += stepsTakenProvisional;
                 distanceTraveledPersistent += stepsTakenProvisional*stepLength;
@@ -305,6 +327,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         }
     }
 
+    // Takes multiple location events and returns the total distance between them, used for step length calibration.
     private float calculateCumulativeDistance(List<Location> locations) {
         Location lastLocation = null;
         float cumulativeDistance = 0;
@@ -319,6 +342,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         return cumulativeDistance;
     }
 
+    // Estimate the elevation based on GNSS location events.
     private void updateRelativeAltitude(float currentApproximateAltitude) {
         altitudeEvents.add(currentApproximateAltitude);
         if (altitudeEvents.size() == verticalDistanceFilter) {
@@ -350,6 +374,9 @@ public class DistanceService extends Service implements LocationListener, Sensor
         }
     }
 
+    // Sends the current plugin status (isReadyToStart, calibratedStepLength, lastCalibrated, bodyHeight) to the native interface
+    // and from there to the plugin interface.
+    // DebugInfo only used for testing purposes.
     public void sendPluginInfo(double accuracy, String debugInfo) {
         boolean isReadyToStart = false;
 
@@ -373,6 +400,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         sendPluginInfo(accuracy, "");
     }
 
+    // Persistence methods.
     private void loadBodyHeight() {
         bodyHeight = preferences.getFloat("bodyHeight", 0);
     }
@@ -409,6 +437,7 @@ public class DistanceService extends Service implements LocationListener, Sensor
         loadStepLength();
     }
 
+    // Stores the incoming sensor data. Used to compensate for fluctuating sampling rates.
     @Override
     public void onSensorChanged(SensorEvent event) {
         gravityX = event.values[0];
@@ -417,7 +446,9 @@ public class DistanceService extends Service implements LocationListener, Sensor
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // No need for action
+    }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
@@ -430,6 +461,10 @@ public class DistanceService extends Service implements LocationListener, Sensor
         void pluginInfoDidChange(boolean isReadyToStart, String debugInfo, long lastCalibrated, float stepLength, float bodyHeight);
     }
 
+    // Thread to process gravity sensor data and count taken steps.
+    // On iOS, sensor data is processed in a background thread automatically, but not on Android.
+    // As stated above, the DistanceService handles sensor data (as opposed to the iOS implementation), ...
+    // ... to ensure that the foreground service consititutes the event listener.
     class StepCounterThread extends Thread {
         Handler handler = new Handler();
 
